@@ -90,7 +90,7 @@ function unlocked(){ try{ return Math.max(0,Math.min(LEVELS.length-1, JSON.parse
 function setUnlocked(n){ try{ const cur=unlocked(); if(n>cur) localStorage.setItem(SAVE,JSON.stringify({unlocked:n})); }catch(e){} }
 
 /* ============ WORLD + PROJECTION ============ */
-const FW=400, FD=720, RP=15, RM=12, FR=0.972, STOP=0.3, KS=1.2, REST=0.45, MASS_M=2.4, MASS_P=1, G=0.05;
+const FW=400, FD=720, RP=15, RM=12, FR=0.972, FRM=0.86, STOP=0.3, KS=1.2, REST=0.45, MASS_M=2.4, MASS_P=1, G=0.05;
 const cv=document.getElementById('field'), ctx=cv.getContext('2d');
 const CW=480, CH=600, CX=240, HORIZON=158, CAMZ=140, FOC=380, EYE=132;
 function scaleAt(d){ return FOC/(d+CAMZ); }
@@ -124,13 +124,13 @@ function collide(a,b){
   if(rv<0){ const j=-(1+REST)*rv/totInv; a.vx-=j*nx/ma; a.vy-=j*ny/ma; b.vx+=j*nx/mb; b.vy+=j*ny/mb; }
 }
 function settleStep(){ const ents=(mol&&mol.phase==='slide'?[mol]:[]).concat(pins);
-  ents.forEach(e=>{ e.vx*=FR; e.vy*=FR; if(Math.hypot(e.vx,e.vy)<STOP){e.vx=0;e.vy=0;} });
+  ents.forEach(e=>{ const f=(e===mol)?FRM:FR; e.vx*=f; e.vy*=f; if(Math.hypot(e.vx,e.vy)<STOP){e.vx=0;e.vy=0;} });
   return ents.every(e=>e.vx===0&&e.vy===0);
 }
 function doThrow(tx,td){
   const dx=tx-THROWER.x, dd=td-THROWER.d, dist=Math.hypot(dx,dd);
   const T=clamp(dist/13,16,42);
-  mol={x:THROWER.x,y:THROWER.d,h:0,vx:dx/T,vy:dd/T,vh:G*T/2,phase:'fly',rad:RM,mass:MASS_M};
+  mol={x:THROWER.x,y:THROWER.d,h:0,vx:dx/(T+1),vy:dd/(T+1),vh:G*T/2,phase:'fly',rad:RM,mass:MASS_M};
   pins.forEach(p=>p.down=false);
   windX=(lv.wind>0)?((Math.random()<0.5?-1:1)*lv.wind):0;
   showWind();
@@ -274,7 +274,7 @@ function render(){
 function loop(){
   if(gstate==='throwing'){
     if(mol.phase==='fly'){ mol.x+=mol.vx; mol.y+=mol.vy; mol.vx+=windX; mol.h+=mol.vh; mol.vh-=G;
-      if(mol.h<=0){ mol.h=0; mol.phase='slide'; mol.vx*=0.55; mol.vy*=0.55; } render(); }
+      if(mol.h<=0){ mol.h=0; mol.phase='slide'; mol.vx*=0.42; mol.vy*=0.42; } render(); }
     else { for(let k=0;k<2;k++) microstep(); const done=settleStep(); render(); if(done) resolve(); }
   }
   requestAnimationFrame(loop);
