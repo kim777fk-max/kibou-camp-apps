@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャンプ沼度診断 🏕️💸 | きぼうキャンプラボ</title>
+<meta name="description" content="持っているキャンプギアを選ぶだけ。総投資額・1回あたり単価から、あなたの『沼度』を診断士が判定します。">
+<style>
+  :root{
+    --bg:#14100d; --bg2:#1c1611; --panel:#211a15; --panel2:#2a2019;
+    --ink:#f3ece4; --muted:#a99b8c; --line:#3a2e25;
+    --ember:#f0833a; --ember2:#ef5423; --ember3:#ffb066;
+    --good:#7bbf6a; --chipbg:#241c16;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(240,131,58,.18), transparent 60%),
+      radial-gradient(800px 400px at 90% 10%, rgba(239,84,35,.10), transparent 55%),
+      linear-gradient(180deg,var(--bg) 0%, var(--bg2) 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:780px;margin:0 auto;padding:24px 16px 140px;}
+
+  /* header */
+  header{text-align:center;padding:18px 6px 6px;}
+  .badge{display:inline-block;font-size:12px;letter-spacing:.12em;color:var(--ember3);
+    border:1px solid var(--line);border-radius:999px;padding:5px 14px;background:rgba(0,0,0,.2);}
+  h1{font-size:clamp(28px,7vw,42px);margin:14px 0 6px;line-height:1.2;
+    background:linear-gradient(120deg,#ffd9a8,var(--ember),var(--ember2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;}
+  .sub{color:var(--muted);font-size:15px;margin:0 auto;max-width:30em;}
+
+  /* settings */
+  .settings{display:flex;gap:12px;margin:22px 0 8px;flex-wrap:wrap;}
+  .field{flex:1 1 160px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .stepper{display:flex;align-items:center;gap:10px;}
+  .stepper button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:20px;cursor:pointer;line-height:1;transition:.15s;}
+  .stepper button:active{transform:scale(.92)}
+  .stepper button:hover{border-color:var(--ember);color:var(--ember3)}
+  .stepper input{width:64px;text-align:center;font-size:20px;font-weight:700;background:transparent;
+    border:none;color:var(--ink);border-bottom:2px solid var(--line);padding:2px 0;-moz-appearance:textfield;}
+  .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .stepper .unit{color:var(--muted);font-size:14px;}
+
+  .hint{color:var(--muted);font-size:13px;margin:6px 2px 0;}
+
+  /* categories */
+  .cat{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    overflow:hidden;box-shadow:var(--shadow);}
+  .cat-head{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);}
+  .cat-head .emo{font-size:22px}
+  .cat-head .nm{font-weight:700;font-size:16px;flex:1}
+  .cat-head .cnt{font-size:12px;color:var(--muted);background:var(--chipbg);border:1px solid var(--line);
+    border-radius:999px;padding:3px 10px;}
+  .cat-head .cnt.on{color:#1a120c;background:var(--ember);border-color:var(--ember);font-weight:700}
+  .cat-head .chev{color:var(--muted);transition:.2s;font-size:13px}
+  .cat.collapsed .chev{transform:rotate(-90deg)}
+  .items{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:4px 14px 16px;}
+  .cat.collapsed .items{display:none}
+  .item{position:relative;text-align:left;background:var(--chipbg);border:1.5px solid var(--line);
+    border-radius:13px;padding:11px 12px;cursor:pointer;transition:.16s;color:var(--ink);}
+  .item:hover{border-color:#6a543f;transform:translateY(-1px)}
+  .item .t{display:inline-block;font-size:10px;letter-spacing:.06em;padding:1px 7px;border-radius:6px;
+    margin-bottom:6px;border:1px solid var(--line);color:var(--muted);}
+  .item .t.entry{color:#9fc7e8;border-color:#34465a}
+  .item .t.mid{color:#e8c98a;border-color:#5a4a2e}
+  .item .t.numa{color:#ef9a7a;border-color:#6a342a}
+  .item .nm{font-size:13px;line-height:1.35;min-height:2.7em;display:block;}
+  .item .pr{font-weight:800;font-size:15px;margin-top:7px;color:var(--ink);}
+  .item .pr small{font-weight:500;color:var(--muted);font-size:11px}
+  .item .ck{position:absolute;top:9px;right:9px;width:20px;height:20px;border-radius:50%;
+    border:1.5px solid var(--line);display:grid;place-items:center;font-size:12px;color:transparent;transition:.16s;}
+  .item.sel{border-color:var(--ember);background:linear-gradient(180deg,rgba(240,131,58,.16),rgba(240,131,58,.05));
+    box-shadow:0 0 0 3px rgba(240,131,58,.12);}
+  .item.sel .ck{background:var(--ember);border-color:var(--ember);color:#1a120c;font-weight:900}
+  .item.sel .pr{color:var(--ember3)}
+
+  /* sticky bar */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    background:linear-gradient(180deg,rgba(20,16,13,.6),rgba(20,16,13,.96) 40%);
+    backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 16px;}
+  .bar-in{max-width:780px;margin:0 auto;display:flex;align-items:center;gap:14px;}
+  .bar .tot{flex:1;min-width:0}
+  .bar .tot .lab{font-size:11px;color:var(--muted)}
+  .bar .tot .v{font-size:24px;font-weight:800;line-height:1.1}
+  .bar .tot .v small{font-size:13px;color:var(--muted);font-weight:600;margin-left:6px}
+  .btn{border:none;cursor:pointer;font-weight:800;border-radius:13px;padding:14px 22px;font-size:16px;
+    color:#1a120c;background:linear-gradient(120deg,var(--ember3),var(--ember),var(--ember2));
+    box-shadow:0 6px 18px rgba(239,84,35,.35);transition:.16s;white-space:nowrap;}
+  .btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);box-shadow:none;transform:none}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);box-shadow:none;font-weight:700}
+  .btn.ghost:hover{border-color:var(--ember)}
+
+  /* result */
+  #result{display:none;margin-top:26px;animation:rise .5s cubic-bezier(.2,.7,.3,1);}
+  @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+  .verdict{border-radius:22px;padding:26px 22px;text-align:center;position:relative;overflow:hidden;
+    border:1.5px solid var(--vaccent,var(--ember));box-shadow:0 18px 50px rgba(0,0,0,.5);}
+  .verdict::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 220px at 50% -20%,
+    color-mix(in srgb,var(--vaccent) 40%,transparent),transparent 70%);pointer-events:none;}
+  .verdict .emo{font-size:60px;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));}
+  .verdict .nm{font-size:clamp(22px,6vw,30px);font-weight:900;margin:10px 0 4px;color:#fff;}
+  .verdict .tag{color:var(--vaccent);font-weight:700;font-size:15px;}
+  .verdict .desc{color:var(--ink);opacity:.92;font-size:14px;margin:14px auto 0;max-width:32em;}
+
+  /* gauge */
+  .gauge{margin:20px 4px 6px;}
+  .gauge .track{height:12px;border-radius:999px;background:#0f0b08;border:1px solid var(--line);position:relative;overflow:hidden;}
+  .gauge .fill{height:100%;border-radius:999px;width:0;
+    background:linear-gradient(90deg,#e8a04b,var(--ember),var(--ember2),#b71c0c);transition:width 1s cubic-bezier(.2,.7,.3,1);}
+  .gauge .ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px;}
+
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;}
+  .stat .l{font-size:12px;color:var(--muted)}
+  .stat .n{font-size:23px;font-weight:800;margin-top:3px;}
+  .stat .n.em{color:var(--ember3)}
+  .stat .s{font-size:11px;color:var(--muted)}
+
+  .shindan{margin-top:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-left:4px solid var(--ember);border-radius:14px;padding:16px 18px;}
+  .shindan .h{font-size:13px;color:var(--ember3);font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .shindan .h .ic{width:26px;height:26px;border-radius:50%;background:var(--chipbg);display:grid;place-items:center;font-size:15px}
+  .shindan p{margin:0;font-size:14.5px}
+
+  .reco{margin-top:22px;}
+  .reco h3{font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .reco .pr-note{font-size:11px;color:var(--muted);margin:0 0 12px}
+  .reco a{display:flex;align-items:center;gap:13px;text-decoration:none;color:var(--ink);
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:10px;transition:.16s;}
+  .reco a:hover{border-color:var(--ember);transform:translateX(2px);background:var(--panel2)}
+  .reco .ri{font-size:26px;flex-shrink:0}
+  .reco .rc{flex:1;min-width:0}
+  .reco .rk{font-size:11px;color:var(--ember3);font-weight:700}
+  .reco .rt{font-weight:700;font-size:15px;margin:1px 0}
+  .reco .rr{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .reco .rarr{color:var(--muted);font-size:18px;flex-shrink:0}
+  .reco a .rgo{font-size:11px;color:#1a120c;background:var(--ember);border-radius:8px;padding:5px 10px;font-weight:800;white-space:nowrap;flex-shrink:0;}
+
+  .share{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;}
+  .share .btn{flex:1 1 160px}
+  .share .x{background:#111;color:#fff;border:1px solid #333;box-shadow:none}
+  .share .x:hover{background:#000}
+  .restart{display:block;margin:18px auto 0;}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px;line-height:1.7}
+  footer a{color:var(--ember3)}
+  .src-flag{font-size:11px;color:var(--muted);text-align:center;margin-top:4px}
+  /* ③ 推移トラッキング */
+  .restore-banner{display:flex;align-items:center;gap:10px;justify-content:space-between;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-left:4px solid var(--ember3);border-radius:12px;padding:10px 14px;margin:14px 2px 0;font-size:13px;color:var(--ink);}
+  .restore-banner small{color:var(--muted);margin-left:4px}
+  .restore-banner button{background:transparent;border:1px solid var(--line);color:var(--muted);
+    border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap;}
+  .restore-banner button:hover{border-color:var(--ember);color:var(--ember3)}
+  .history{margin:16px 2px 0}
+  .history .hist,.history .hist-new{border-radius:14px;padding:14px 16px;font-size:14px;border:1px solid var(--line)}
+  .history .hist-new{background:var(--panel);color:var(--ink)}
+  .history .hist{background:linear-gradient(180deg,var(--panel2),var(--panel))}
+  .history .hist.up{border-left:4px solid var(--ember2)}
+  .history .hist.down{border-left:4px solid #6aa3c7}
+  .history .hist.same{border-left:4px solid var(--muted)}
+  .history .hist-h{font-size:15px;font-weight:700;margin-bottom:5px}
+  .history .hist-h b{color:var(--ember3)}
+  .history .hist-row{color:var(--ink);opacity:.92}
+  .history .hist-seq{color:var(--muted);font-size:12.5px;margin-top:4px}
+  @media(max-width:420px){.stats{grid-template-columns:1fr 1fr}.item .nm{min-height:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">🏕️ きぼうキャンプラボ 診断</span>
+    <h1>キャンプ沼度診断</h1>
+    <p class="sub">持っているギアを選ぶだけ。総投資額と1回あたり単価から、あなたの<b>沼の深さ</b>を中小企業診断士が判定します。</p>
+  </header>
+
+  <div class="settings">
+    <div class="field">
+      <label>年間キャンプ回数</label>
+      <div class="stepper">
+        <button data-step="trips" data-d="-1">−</button>
+        <input id="trips" type="number" value="10" min="1" max="200" inputmode="numeric">
+        <span class="unit">回 / 年</span>
+        <button data-step="trips" data-d="1">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>キャンプ歴</label>
+      <div class="stepper">
+        <button data-step="years" data-d="-1">−</button>
+        <input id="years" type="number" value="3" min="1" max="50" inputmode="numeric">
+        <span class="unit">年</span>
+        <button data-step="years" data-d="1">＋</button>
+      </div>
+    </div>
+  </div>
+  <p class="hint">※ 1回あたり単価＝総投資額 ÷（年間回数 × キャンプ歴）。稼働率が高いほど“元が取れている”判定になります。</p>
+
+  <div class="restore-banner" id="restoreBanner" style="display:none">
+    <span>👋 おかえりなさい。前回のギア構成を復元しました<small id="rb-prev"></small></span>
+    <button id="rb-clear">クリア</button>
+  </div>
+
+  <div id="catalog"></div>
+
+  <div id="result">
+    <div class="verdict" id="verdict">
+      <div class="emo" id="v-emo">🏕️</div>
+      <div class="nm" id="v-name">—</div>
+      <div class="tag" id="v-tag">—</div>
+      <div class="desc" id="v-desc">—</div>
+    </div>
+
+    <div class="history" id="history"></div>
+
+    <div class="gauge">
+      <div class="track"><div class="fill" id="g-fill"></div></div>
+      <div class="ticks"><span>🌱 入口</span><span>🔥</span><span>🏕️ 中級</span><span>⛺</span><span>🪓 廃人</span><span>🔱 神</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="l">総投資額</div><div class="n em" id="s-total">¥0</div><div class="s" id="s-count">0点 選択</div></div>
+      <div class="stat"><div class="l">キャンプ1回あたり単価</div><div class="n" id="s-pertrip">¥0</div><div class="s" id="s-trips">— 回ぶん</div></div>
+    </div>
+
+    <div class="shindan">
+      <div class="h"><span class="ic">🧑‍💼</span>中小企業診断士の一言</div>
+      <p id="s-shindan">—</p>
+    </div>
+
+    <div class="reco" id="reco"></div>
+
+    <div class="share">
+      <button class="btn x" id="shareX">𝕏 で結果をシェア</button>
+      <button class="btn ghost" id="saveImg">📷 結果カードを保存</button>
+    </div>
+    <button class="btn ghost restart" id="restart">↺ もう一度診断する</button>
+  </div>
+
+  <footer>
+    <div>🏕️ <b>きぼうキャンプラボ</b> ／ キャンプ沼度診断（β）</div>
+    <div class="src-flag" id="srcFlag">価格はツール内蔵の参考相場で計算しています</div>
+  </footer>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="tot">
+      <div class="lab">選択中の総額</div>
+      <div class="v">¥<span id="bar-total">0</span> <small id="bar-count">0点</small></div>
+    </div>
+    <button class="btn" id="diagnose" disabled>沼度を診断する 🔥</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   設定 — 楽天連携はここを編集するだけで有効化できます
+   ・affiliateId を入れると、レコメンドのリンクがアフィリ計測リンクになります
+   ・proxyBase を入れると、WP REST プロキシ経由でライブ価格を取得します
+     （詳細は同梱の RAKUTEN-INTEGRATION.md / 既定はOFF＝内蔵参考相場で動作）
+   ============================================================ */
+const CONFIG = {
+  affiliateId: "",                 // 例: "0a1b2c3d.4e5f6g7h.0a1b2c3d.4e5f6g7h"
+  proxyBase:   "",                 // 例: "/wp-json/numado/v1/price"  ← 空ならライブ取得しない
+};
+const SITE = { name: "きぼうキャンプラボ", url: "https://outdoor.iroirorakko.com/" };
+
+/* ---- データ（4エージェント並列生成 → 検証済み） ---- */
+const GEAR = [
+{id:"tent",name:"テント",emoji:"⛺",items:[
+  {id:"tent_entry",name:"ドームテント入門(コールマン ツーリングドーム)",price:18000,tier:"entry",kw:"ドームテント 2人用 入門"},
+  {id:"tent_mid",name:"ワンポールテント(DOD/tent-Mark)",price:38000,tier:"mid",kw:"ワンポールテント ティピー"},
+  {id:"tent_numa",name:"2ルームテント(スノーピーク ランドロック)",price:165000,tier:"numa",kw:"2ルームテント スノーピーク"},
+  {id:"tent_numa2",name:"ハイエンドシェルター(ノルディスク アスガルド)",price:130000,tier:"numa",kw:"ノルディスク コットンテント"}]},
+{id:"tarp",name:"タープ",emoji:"🏕️",items:[
+  {id:"tarp_entry",name:"ヘキサタープ入門(キャプテンスタッグ/ロゴス)",price:6000,tier:"entry",kw:"ヘキサタープ 入門"},
+  {id:"tarp_mid",name:"TC素材レクタタープ(DOD/テンマクTC)",price:16000,tier:"mid",kw:"TC タープ ポリコットン"},
+  {id:"tarp_numa",name:"高級ヘキサタープ(スノーピーク HDタープ)",price:42000,tier:"numa",kw:"スノーピーク タープ HD"}]},
+{id:"bonfire",name:"焚き火台",emoji:"🔥",items:[
+  {id:"bonfire_entry",name:"ソロ焚き火台入門(キャプテンスタッグ/笑's)",price:4500,tier:"entry",kw:"焚き火台 ソロ"},
+  {id:"bonfire_mid",name:"組立式焚き火台(ピコグリル風/ベルモント)",price:13000,tier:"mid",kw:"焚き火台 軽量 組立"},
+  {id:"bonfire_numa",name:"高級焚き火台(スノーピーク 焚火台L)",price:28000,tier:"numa",kw:"スノーピーク 焚火台 L"}]},
+{id:"sleeping_bag",name:"シュラフ(寝袋)",emoji:"🛏️",items:[
+  {id:"sleeping_bag_entry",name:"化繊封筒型シュラフ入門(コールマン/ロゴス)",price:5000,tier:"entry",kw:"寝袋 封筒型 入門"},
+  {id:"sleeping_bag_mid",name:"3シーズンダウンシュラフ(モンベル バロウバッグ)",price:22000,tier:"mid",kw:"ダウン シュラフ 3シーズン"},
+  {id:"sleeping_bag_numa",name:"高級ダウンシュラフ(ナンガ オーロラ)",price:58000,tier:"numa",kw:"ナンガ オーロラ ダウン シュラフ"}]},
+{id:"mat_cot",name:"マット・コット",emoji:"🛌",items:[
+  {id:"mat_cot_entry",name:"インフレーターマット入門(キャプテンスタッグ/WAQ)",price:4000,tier:"entry",kw:"インフレーターマット キャンプ"},
+  {id:"mat_cot_mid",name:"ハイ&ロー コット(DOD バッグインベッド)",price:13000,tier:"mid",kw:"キャンプ コット 2way"},
+  {id:"mat_cot_numa",name:"高級スリーピングマット(サーマレスト ネオエア)",price:28000,tier:"numa",kw:"サーマレスト ネオエア マット"}]},
+{id:"table",name:"テーブル",emoji:"🪵",items:[
+  {id:"table_entry",name:"折りたたみテーブル入門(キャプテンスタッグ/ロゴス)",price:4000,tier:"entry",kw:"アウトドア テーブル 折りたたみ"},
+  {id:"table_mid",name:"ロールトップテーブル(コールマン/Helinox タクティカル)",price:14000,tier:"mid",kw:"ロールテーブル キャンプ"},
+  {id:"table_numa",name:"高級アイアンウッドテーブル(スノーピーク IGT)",price:45000,tier:"numa",kw:"スノーピーク IGT テーブル"}]},
+{id:"chair",name:"チェア",emoji:"🪑",items:[
+  {id:"chair_entry",name:"折りたたみチェア入門(キャプテンスタッグ/コールマン)",price:3500,tier:"entry",kw:"アウトドア チェア 折りたたみ"},
+  {id:"chair_mid",name:"コンパクトチェア(Helinox チェアワン類似/DOD)",price:9000,tier:"mid",kw:"コンパクト チェア キャンプ"},
+  {id:"chair_numa",name:"高級チェア(Helinox チェアツー/グラウンドチェア)",price:22000,tier:"numa",kw:"ヘリノックス チェア"}]},
+{id:"lantern",name:"ランタン・照明",emoji:"🏮",items:[
+  {id:"lantern_entry",name:"LEDランタン入門(ジェントス/コールマン)",price:3000,tier:"entry",kw:"LED ランタン キャンプ"},
+  {id:"lantern_mid",name:"ガスランタン(SOTO/コールマン)",price:12000,tier:"mid",kw:"ガスランタン キャンプ"},
+  {id:"lantern_numa",name:"高級ガソリンランタン(コールマン 286A/ペトロマックス)",price:32000,tier:"numa",kw:"ペトロマックス ランタン"}]},
+{id:"burner",name:"バーナー・ストーブ",emoji:"🔥",items:[
+  {id:"burner_entry",name:"CB缶シングルバーナー入門(イワタニ ジュニア/SOTO ST-310)",price:5000,tier:"entry",kw:"シングルバーナー CB缶"},
+  {id:"burner_mid",name:"OD缶バーナー(SOTO ウインドマスター/プリムス)",price:12000,tier:"mid",kw:"OD缶 シングルバーナー"},
+  {id:"burner_numa",name:"ツーバーナー/液燃ストーブ(コールマン 413H/MSR)",price:36000,tier:"numa",kw:"ツーバーナー コールマン"}]},
+{id:"cooler",name:"クーラーボックス",emoji:"🧊",items:[
+  {id:"cooler_entry",name:"ソフトクーラー入門(コールマン/ロゴス)",price:4000,tier:"entry",kw:"ソフトクーラーボックス キャンプ"},
+  {id:"cooler_mid",name:"ハードクーラー中容量(ダイワ/シマノ/イグルー)",price:18000,tier:"mid",kw:"ハードクーラーボックス 保冷"},
+  {id:"cooler_numa",name:"高級ハードクーラー(YETI タンドラ)",price:65000,tier:"numa",kw:"YETI クーラーボックス"}]},
+{id:"cookware",name:"調理器具(クッカー・スキレット・ダッチオーブン)",emoji:"🍳",items:[
+  {id:"cookware_entry",name:"アルミクッカーセット入門(キャプテンスタッグ/ロゴス)",price:4000,tier:"entry",kw:"クッカー セット キャンプ"},
+  {id:"cookware_mid",name:"スキレット/メスティン(ニトリ・トランギア)",price:5000,tier:"mid",kw:"スキレット キャンプ"},
+  {id:"cookware_numa",name:"鋳鉄ダッチオーブン(ロッジ/ユニフレーム)",price:22000,tier:"numa",kw:"ダッチオーブン 鋳鉄"}]},
+{id:"blade",name:"刃物・斧・ノコギリ",emoji:"🪓",items:[
+  {id:"blade_entry",name:"ナタ・折りたたみノコギリ入門(シルキー/キャプテンスタッグ)",price:3000,tier:"entry",kw:"折りたたみ ノコギリ キャンプ"},
+  {id:"blade_mid",name:"アウトドアナイフ/手斧(モーラナイフ/ハスクバーナ)",price:8000,tier:"mid",kw:"モーラナイフ アウトドア"},
+  {id:"blade_numa",name:"高級ブッシュクラフト斧(グレンスフォシュ/ハルタホース)",price:28000,tier:"numa",kw:"グレンスフォシュ 斧"}]},
+{id:"storage_wagon",name:"収納・キャリーワゴン",emoji:"🛒",items:[
+  {id:"storage_wagon_entry",name:"コンテナ/ギアボックス入門(無印・トラスコ・ニトリ)",price:3000,tier:"entry",kw:"ギアコンテナ キャンプ 収納"},
+  {id:"storage_wagon_mid",name:"キャリーワゴン(DOD/コールマン アウトドアワゴン)",price:12000,tier:"mid",kw:"キャリーワゴン アウトドア"},
+  {id:"storage_wagon_numa",name:"高級ワゴン/ギアシェルフ(スノーピーク/グッドラックテーブル)",price:35000,tier:"numa",kw:"スノーピーク ワゴン"}]},
+{id:"power_station",name:"ポータブル電源",emoji:"🔋",items:[
+  {id:"power_station_entry",name:"小容量ポータブル電源入門(Anker/Jackery 240前後)",price:22000,tier:"entry",kw:"ポータブル電源 小容量"},
+  {id:"power_station_mid",name:"中容量ポータブル電源(Jackery 700〜1000)",price:75000,tier:"mid",kw:"Jackery ポータブル電源 1000"},
+  {id:"power_station_numa",name:"大容量ポータブル電源(EcoFlow DELTA/Jackery 2000)",price:180000,tier:"numa",kw:"EcoFlow DELTA ポータブル電源"}]}
+];
+
+const TIERS = [
+  {min:0,max:30000,name:"レンタル勢・にわかキャンパー",emoji:"🌱",tagline:"まだ陸にいる。沼はすぐそこ。",description:"ギア総額3万円未満。100均とホームセンターで揃えた最小装備、あるいは「とりあえず一式レンタル」で乗り切る段階。本人は『沼にはハマらない』と本気で思っているが、その台詞こそ全沼民が通った道である。",shindanComment:"総額{total}円は健全そのもの。1回あたり{costPerTrip}円なら立派な変動費、まだ固定費化していません。診断士的には『損益分岐点の手前』。ここで撤退すれば被害は軽微です(できるとは言っていない)。",color:"#1b2420",accent:"#e8a04b"},
+  {min:30000,max:100000,name:"沼入門・これから勢",emoji:"🔥",tagline:"気づけばカートに入っている。",description:"総額3〜10万円。マイテント・マイチェアを手に入れ、焚き火を覚えた幸福期。『これで一通り揃った』と満足げに語るが、その横でランタンの2個目をポチっている。沼の水位はまだ足首。ただし足は抜けない。",shindanComment:"減価償却を始めるべき水準です。{years}年使えば年あたりの負担は薄まる…はずが、買い増しで分母より分子が育つ典型。{annualTrips}回/年なら1回{costPerTrip}円、コスパは良好。問題は『良好だからまた買う』ことです。",color:"#221f1a",accent:"#f0833a"},
+  {min:100000,max:300000,name:"中級沼・週末キャンパー",emoji:"🏕️",tagline:"クローゼットがギアに侵食された。",description:"総額10〜30万円。季節別の寝袋を揃え、ふもとっぱらの予約に全集中する中堅。『道具は揃った』が口癖だが、新色が出れば話は別。家族には『前から持ってた』で押し通すスキルも習得済み。",shindanComment:"立派な固定資産です。稼働率を上げて{annualTrips}回/年まで回せば1回{costPerTrip}円まで圧縮可能。診断士としては『遊休資産を作るな』が鉄則。テント3張のうち2張が眠っているなら、それは在庫ではなく死蔵です。",color:"#241d18",accent:"#f26d2c"},
+  {min:300000,max:700000,name:"重度沼・ガチ勢",emoji:"⛺",tagline:"もう車に積みきれない。",description:"総額30〜70万円。憧れの高級ブランドに手を出し、用途別にテントを使い分ける領域。『これが最後の一張り』を3回は言った。車載スペースとの戦いが始まり、ルーフボックスの購入を真剣に検討し始める。",shindanComment:"総額{total}円は中小企業の設備投資レベル。ROIを問えば『心の充足』という測定不能なリターンが返ってきます。{years}年で割れば年商規模の趣味。診断士的には『投資回収より撤退障壁の高さ』を心配する段階です。",color:"#261a14",accent:"#ef5423"},
+  {min:700000,max:1500000,name:"キャンプ廃人",emoji:"🪓",tagline:"ギアのために働いている。",description:"総額70〜150万円。給料がそのままギアに変わる無限ループの住人。倉庫を借りるかどうかの瀬戸際で、同じカテゴリの道具が複数並ぶ。『使う日が来る』という未来は、たいてい来ない。それでも幸せそうなのが沼の業である。",shindanComment:"もはや事業性のある規模。{total}円を回収するには{costPerTrip}円×相当回数が必要で、損益分岐は遥か彼方。減価償却どころか、買い増しペースが償却ペースを上回る『沼式インフレ』が発生中。即時、稼働率の改善をご提案します。",color:"#28150f",accent:"#e23c1a"},
+  {min:1500000,max:3000000,name:"沼の主(ぬしの主)",emoji:"👑",tagline:"ショップより在庫がある。",description:"総額150〜300万円。もはや個人の趣味の枠を超え、周囲から『あの人に聞けば間違いない』と崇められる存在。廃番モデルを複数所有し、ギアの歴史を語り出すと止まらない。家の一室がショールームと化している。",shindanComment:"総額{total}円は立派な棚卸資産。これだけの在庫があるなら、もはや卸売業の開業を真剣に検討すべき水準です。診断士視点では『副業化による収益化』が唯一の合理的出口。{years}年分の情熱を、そろそろキャッシュフローに変えませんか。",color:"#2a120c",accent:"#cf2d12"},
+  {min:3000000,max:100000000,name:"沼の神",emoji:"🔱",tagline:"あなたが歩けば、そこが沼。",description:"総額300万円超。生ける伝説。所有ギアは博物館級で、メーカーから新作の意見を求められるレベル。『総額？数えたことない』が決め台詞。もはや金額は問題ではなく、存在そのものがキャンプ文化である。後光が差している。",shindanComment:"総額{total}円、減価償却も損益分岐も超越した領域です。これはもはや消費ではなく文化遺産への投資。診断士として申し上げられるのは一つ、『事業化して法人成り、ギア資産を経費計上』——あなたの沼には、節税という名の最終形態が残されています。",color:"#2d0f0a",accent:"#b71c0c"}
+];
+
+const RECO = [
+  {cat:"テント",item:"自立式ドームテント(前室付き)",reason:"すべての野営の土台。前室があれば雨でも靴・荷物を置けて居住性が一気に上がり、沼の入口として満足度が最も高い一品。",kw:"テント ドーム 前室 ソロ 2人用"},
+  {cat:"タープ",item:"ヘキサ/レクタタープ",reason:"日差し・小雨・視線を遮る一枚で快適性が激変し、サイトの『張り方』を楽しめるようになる沼の主戦場。",kw:"タープ ヘキサ レクタ 防水 UV"},
+  {cat:"焚き火台",item:"折りたたみ焚き火台(二次燃焼)",reason:"キャンプの主役。二次燃焼モデルなら炎が美しく煙も少なく、夜の満足度と所有欲を一気に満たしてくれる。",kw:"焚き火台 二次燃焼 折りたたみ"},
+  {cat:"シュラフ",item:"封筒型/マミー型シュラフ(3シーズン)",reason:"睡眠の質が翌日を決める。快適使用温度に余裕のある寝袋を足すと夜が怖くなくなり通年で出撃できる。",kw:"寝袋 シュラフ 3シーズン 快適温度"},
+  {cat:"マット・コット",item:"インフレーターマット/コット",reason:"地面の硬さと底冷えを断つ快眠ギア。これがあると寝心地が自宅級になり連泊が苦にならない。",kw:"インフレーターマット コット 厚手"},
+  {cat:"テーブル",item:"ロールテーブル/ウッドテーブル",reason:"調理も食事もギアの定位置も決まる作業面。一枚あるだけでサイトの完成度と段取りが段違いになる。",kw:"アウトドアテーブル ロール ウッド 軽量"},
+  {cat:"チェア",item:"ローチェア/ハイバックチェア",reason:"焚き火を眺める時間そのものを支える特等席。座り心地に投資すると滞在の幸福度が跳ね上がる沼の定番。",kw:"アウトドアチェア ローチェア ハイバック"},
+  {cat:"ランタン・照明",item:"LEDランタン+オイル/ガスランタン",reason:"安全確保と雰囲気作りを両立する必需品。メインのLEDに揺らぐ炎系を足すと夜の没入感が完成する。",kw:"ランタン LED オイル ガス キャンプ"},
+  {cat:"バーナー・ストーブ",item:"シングルバーナー(CB/OD缶)",reason:"朝のコーヒーも湯沸かしも即戦力。火起こし不要でサッと調理でき、設営疲れの日ほどありがたい。",kw:"シングルバーナー CB缶 OD缶 コンパクト"},
+  {cat:"クーラーボックス",item:"ハードクーラーボックス(20〜35L)",reason:"食材と飲み物の鮮度を守る保冷力は夏キャンプの生命線。長時間保冷で買い出しの自由度が一気に広がる。",kw:"クーラーボックス ハード 保冷力 25L"},
+  {cat:"調理器具",item:"クッカーセット/スキレット",reason:"作れる料理の幅が世界を変える。スタッキングできるクッカーや鋳鉄スキレットは映えも実用も満点。",kw:"クッカーセット スキレット アウトドア 調理"},
+  {cat:"刃物・斧",item:"アウトドアナイフ+手斧",reason:"薪割り・フェザースティック・調理までこなす相棒。手仕事が増えるほどキャンプの解像度と沼度が深まる。",kw:"アウトドアナイフ 手斧 薪割り"},
+  {cat:"収納・キャリーワゴン",item:"折りたたみキャリーワゴン",reason:"増えたギアの運搬と片付けを劇的に楽にする縁の下の力持ち。駐車場が遠いサイトでこそ本領を発揮する。",kw:"キャリーワゴン アウトドア 折りたたみ 大容量"},
+  {cat:"ポータブル電源",item:"ポータブル電源(300〜700Wh)",reason:"スマホ・照明・夏の扇風機/冬の電気毛布まで賄える快適の最終兵器。電源で野営の快適度は青天井になる。",kw:"ポータブル電源 大容量 キャンプ 500Wh"}
+];
+
+/* ---- state ---- */
+const selected = new Set();   // item id
+const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+
+/* ③ 推移トラッキング（localStorage） */
+let DEMO = false;
+const LS_KEY = "camp_numado_v1";
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {snapshots:[], lastSelection:null}; }catch(e){ return {snapshots:[], lastSelection:null}; } }
+function saveStore(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} }
+
+function rakutenUrl(kw){
+  const base = "https://search.rakuten.co.jp/search/mall/" + encodeURIComponent(kw) + "/";
+  if(!CONFIG.affiliateId) return base;
+  return "https://hb.afl.rakuten.co.jp/hgc/" + CONFIG.affiliateId + "/?pc=" + encodeURIComponent(base) + "&m=" + encodeURIComponent(base);
+}
+
+/* ---- build catalog ---- */
+const catalogEl = document.getElementById("catalog");
+GEAR.forEach((cat, ci) => {
+  const sec = document.createElement("section");
+  sec.className = "cat" + (ci > 1 ? " collapsed" : "");
+  sec.innerHTML =
+    '<div class="cat-head"><span class="emo">'+cat.emoji+'</span>'+
+    '<span class="nm">'+cat.name+'</span>'+
+    '<span class="cnt" data-cnt="'+cat.id+'">未選択</span>'+
+    '<span class="chev">▼</span></div>'+
+    '<div class="items"></div>';
+  const itemsWrap = sec.querySelector(".items");
+  cat.items.forEach(it => {
+    const b = document.createElement("button");
+    b.className = "item";
+    b.dataset.id = it.id;
+    b.dataset.price = it.price;
+    b.dataset.cat = cat.id;
+    const tierLabel = {entry:"入門",mid:"中堅",numa:"沼"}[it.tier];
+    b.innerHTML =
+      '<span class="t '+it.tier+'">'+tierLabel+'</span>'+
+      '<span class="nm">'+it.name+'</span>'+
+      '<span class="pr">'+yen(it.price)+' <small>目安</small></span>'+
+      '<span class="ck">✓</span>';
+    b.addEventListener("click", () => toggle(it.id, b, cat.id));
+    itemsWrap.appendChild(b);
+  });
+  sec.querySelector(".cat-head").addEventListener("click", e => {
+    if(e.target.closest(".item")) return;
+    sec.classList.toggle("collapsed");
+  });
+  catalogEl.appendChild(sec);
+});
+
+function toggle(id, el, catId){
+  if(selected.has(id)){ selected.delete(id); el.classList.remove("sel"); }
+  else { selected.add(id); el.classList.add("sel"); }
+  // update category counter
+  const catItems = GEAR.find(c=>c.id===catId).items.filter(i=>selected.has(i.id)).length;
+  const cntEl = document.querySelector('[data-cnt="'+catId+'"]');
+  cntEl.textContent = catItems ? catItems+"点 ✓" : "未選択";
+  cntEl.classList.toggle("on", catItems>0);
+  updateBar();
+}
+
+function currentTotal(){
+  let t = 0;
+  document.querySelectorAll(".item.sel").forEach(el => t += +el.dataset.price);
+  return t;
+}
+function updateBar(){
+  const t = currentTotal(), n = selected.size;
+  document.getElementById("bar-total").textContent = t.toLocaleString("ja-JP");
+  document.getElementById("bar-count").textContent = n + "点";
+  document.getElementById("diagnose").disabled = n === 0;
+}
+
+/* ---- steppers ---- */
+document.querySelectorAll("[data-step]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const inp = document.getElementById(btn.dataset.step);
+    const v = Math.max(+inp.min, Math.min(+inp.max, (+inp.value||0) + (+btn.dataset.d)));
+    inp.value = v;
+  });
+});
+
+/* ---- diagnose ---- */
+function tierFor(total){
+  return TIERS.find(t => total >= t.min && total < t.max) || TIERS[TIERS.length-1];
+}
+function gaugePct(total){
+  // 各ティアを均等幅にして、ティア内の位置を線形補間
+  const i = TIERS.indexOf(tierFor(total));
+  const t = TIERS[i];
+  const within = Math.min(1,(total - t.min) / (t.max - t.min));
+  return ((i + within) / TIERS.length) * 100;
+}
+
+document.getElementById("diagnose").addEventListener("click", runDiagnosis);
+
+let lastVerdict = null;
+function runDiagnosis(){
+  const total = currentTotal();
+  const count = selected.size;
+  const trips = Math.max(1, +document.getElementById("trips").value || 1);
+  const years = Math.max(1, +document.getElementById("years").value || 1);
+  const denom = trips * years;
+  const perTrip = denom ? total/denom : 0;
+  const tier = tierFor(total);
+
+  // verdict card
+  document.documentElement.style.setProperty("--vaccent", tier.accent);
+  const v = document.getElementById("verdict");
+  v.style.background = "linear-gradient(180deg,"+tier.color+",#120d0a)";
+  document.getElementById("v-emo").textContent = tier.emoji;
+  document.getElementById("v-name").textContent = tier.name;
+  document.getElementById("v-tag").textContent = tier.tagline;
+  document.getElementById("v-desc").textContent = tier.description;
+
+  // stats
+  document.getElementById("s-total").textContent = yen(total);
+  document.getElementById("s-count").textContent = count + "点 選択";
+  document.getElementById("s-pertrip").textContent = yen(perTrip);
+  document.getElementById("s-trips").textContent = trips+"回/年 × "+years+"年 = "+denom+"回ぶん";
+
+  // shindan
+  const fill = s => s.replace(/{total}/g, total.toLocaleString("ja-JP"))
+                     .replace(/{costPerTrip}/g, Math.round(perTrip).toLocaleString("ja-JP"))
+                     .replace(/{annualTrips}/g, trips)
+                     .replace(/{years}/g, years);
+  document.getElementById("s-shindan").textContent = fill(tier.shindanComment);
+
+  // recommendations
+  buildReco();
+
+  // ③ 推移を記録＋差分バナー
+  recordAndRenderHistory({total, count, tier:tier.name, emoji:tier.emoji, trips, years, ids:[...selected]});
+
+  // gauge
+  const g = document.getElementById("g-fill");
+  g.style.width = "0%";
+
+  lastVerdict = {tier, total, perTrip, count};
+
+  document.getElementById("result").style.display = "block";
+  requestAnimationFrame(()=>{ setTimeout(()=>{ g.style.width = gaugePct(total).toFixed(1)+"%"; }, 60); });
+  document.getElementById("result").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function ownedHighestTier(cat){
+  let best = -1; const order = {entry:0,mid:1,numa:2};
+  cat.items.forEach(i=>{ if(selected.has(i.id)) best = Math.max(best, order[i.tier]); });
+  return best; // -1 = 未所持
+}
+function buildReco(){
+  const wrap = document.getElementById("reco");
+  const recos = [];
+  // 1) 未所持カテゴリ → 新規おすすめ
+  GEAR.forEach(cat=>{
+    if(ownedHighestTier(cat) === -1){
+      const r = RECO.find(x => cat.name.startsWith(x.cat) || cat.name.indexOf(x.cat)>=0);
+      if(r) recos.push({emoji:cat.emoji, kicker:"未所持カテゴリ", item:r.item, reason:r.reason, kw:r.kw});
+    }
+  });
+  // 2) 不足が少なければ、沼アイテム未所持カテゴリを“格上げ”提案で補完
+  if(recos.length < 3){
+    GEAR.forEach(cat=>{
+      if(recos.length >= 4) return;
+      const best = ownedHighestTier(cat);
+      if(best >= 0 && best < 2){
+        const numa = cat.items.find(i=>i.tier==="numa");
+        if(numa) recos.push({emoji:cat.emoji, kicker:"沼への格上げ", item:numa.name.replace(/\(.*\)/,""), reason:"このカテゴリはまだ伸びしろあり。ワンランク上に手を出すと沼が深まります（自己責任）。", kw:numa.kw});
+      }
+    });
+  }
+  const list = recos.slice(0,4);
+  let html = '<h3>🛒 次に沼にハマるならコレ</h3><p class="pr-note">※ 楽天市場の検索結果に飛びます（アフィリエイトリンクを含む場合があります）</p>';
+  if(list.length === 0){
+    html += '<a href="'+rakutenUrl("キャンプ ギア 新作")+'" target="_blank" rel="nofollow sponsored noopener"><span class="ri">🏆</span><div class="rc"><div class="rk">全カテゴリ制覇</div><div class="rt">買うものがもう無い…おめでとうございます</div><div class="rr">あなたはもう立派な沼の住人。あとは新作と2個目を待つだけです。</div></div><span class="rgo">新作を見る</span></a>';
+  } else {
+    list.forEach(r=>{
+      html += '<a href="'+rakutenUrl(r.kw)+'" target="_blank" rel="nofollow sponsored noopener">'+
+        '<span class="ri">'+r.emoji+'</span>'+
+        '<div class="rc"><div class="rk">'+r.kicker+'</div><div class="rt">'+r.item+'</div><div class="rr">'+r.reason+'</div></div>'+
+        '<span class="rgo">楽天で見る</span></a>';
+    });
+  }
+  wrap.innerHTML = html;
+}
+
+/* ---- restart ---- */
+document.getElementById("restart").addEventListener("click", ()=>{
+  document.getElementById("result").style.display = "none";
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+
+/* ---- share: X intent ---- */
+document.getElementById("shareX").addEventListener("click", ()=>{
+  if(!lastVerdict) return;
+  const {tier,total,perTrip} = lastVerdict;
+  const text =
+    "私のキャンプ沼度は「"+tier.name+"」"+tier.emoji+"\n"+
+    "総投資額 "+yen(total)+" ／ 1回あたり "+yen(perTrip)+"\n"+
+    "#キャンプ沼度診断 #キャンプ";
+  const url = "https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(SITE.url);
+  window.open(url, "_blank", "noopener,width=600,height=520");
+});
+
+/* ---- share: canvas image ---- */
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function drawCard(){
+  const {tier,total,perTrip,count} = lastVerdict;
+  const W=1080,H=1080;
+  const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+  const c=cv.getContext("2d");
+  // bg
+  const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,tier.color); g.addColorStop(1,"#0e0a07");
+  c.fillStyle=g; c.fillRect(0,0,W,H);
+  // glow
+  const rg=c.createRadialGradient(W/2,150,40,W/2,150,640); rg.addColorStop(0,tier.accent+"55"); rg.addColorStop(1,"transparent");
+  c.fillStyle=rg; c.fillRect(0,0,W,520);
+  // border
+  c.strokeStyle=tier.accent; c.lineWidth=8; roundRect(c,28,28,W-56,H-56,40); c.stroke();
+  c.textAlign="center"; c.fillStyle="#ffce9e";
+  c.font="600 34px sans-serif"; c.fillText("🏕️ キャンプ沼度診断", W/2, 120);
+  // emoji
+  c.font="190px sans-serif"; c.fillText(tier.emoji, W/2, 360);
+  // name
+  c.fillStyle="#ffffff"; c.font="900 70px sans-serif";
+  wrapText(c, tier.name, W/2, 470, W-180, 78);
+  // tagline
+  c.fillStyle=tier.accent; c.font="700 38px sans-serif"; c.fillText(tier.tagline, W/2, 560);
+  // stat panel
+  c.fillStyle="rgba(0,0,0,.32)"; roundRect(c,120,640,W-240,260,28); c.fill();
+  c.fillStyle="#a99b8c"; c.font="600 32px sans-serif";
+  c.fillText("総投資額", W/2-200, 710); c.fillText("1回あたり単価", W/2+200, 710);
+  c.fillStyle="#ffb066"; c.font="900 64px sans-serif"; c.fillText(yen(total), W/2-200, 785);
+  c.fillStyle="#ffffff"; c.font="900 64px sans-serif"; c.fillText(yen(perTrip), W/2+200, 785);
+  c.fillStyle="#8a7d6f"; c.font="500 28px sans-serif"; c.fillText("所有ギア "+count+"点 で診断", W/2, 865);
+  // footer
+  c.fillStyle="#c9b9a8"; c.font="600 34px sans-serif"; c.fillText("🏕️ きぼうキャンプラボ", W/2, 1000);
+  c.fillStyle="#7d7163"; c.font="500 26px sans-serif"; c.fillText("outdoor.iroirorakko.com", W/2, 1042);
+  return cv;
+}
+function wrapText(c,text,x,y,maxW,lh){
+  // 日本語向け：文字単位で折り返し（最大2行）
+  let line="", lines=[];
+  for(const ch of text){
+    if(c.measureText(line+ch).width>maxW && line){ lines.push(line); line=ch; }
+    else line+=ch;
+  }
+  lines.push(line);
+  if(lines.length>2){ lines=[lines[0], lines.slice(1).join("")]; }
+  const startY=y-(lines.length-1)*lh/2;
+  lines.forEach((ln,i)=>c.fillText(ln,x,startY+i*lh));
+}
+document.getElementById("saveImg").addEventListener("click", ()=>{
+  if(!lastVerdict) return;
+  const cv=drawCard();
+  const a=document.createElement("a");
+  a.download="camp-numado-"+lastVerdict.tier.name.replace(/[^一-龠ぁ-んァ-ヶ]/g,"")+".png";
+  a.href=cv.toDataURL("image/png");
+  a.click();
+});
+
+/* ---- (任意) ライブ価格：CONFIG.proxyBase 設定時のみ ---- */
+async function tryLivePrices(){
+  if(!CONFIG.proxyBase) return;
+  document.getElementById("srcFlag").textContent = "ライブ価格（楽天）取得中…";
+  // 実装は RAKUTEN-INTEGRATION.md 参照。WP REST プロキシ /price?key=<itemId> を叩いて
+  // 各 .item .pr の表示と data-price を上書きする。失敗時は内蔵相場のまま。
+}
+tryLivePrices();
+
+/* ③ 推移：記録＋差分バナー */
+function recordAndRenderHistory(cur){
+  const store = loadStore();
+  const prev = store.snapshots.length ? store.snapshots[store.snapshots.length-1] : null;
+  const now = new Date();
+  const snap = {total:cur.total, count:cur.count, tier:cur.tier, emoji:cur.emoji, ts:now.getTime(), date:(now.getMonth()+1)+"/"+now.getDate()};
+  renderHistoryBanner(DEMO ? null : prev, snap, DEMO ? [] : store.snapshots);
+  if(!DEMO){
+    if(!(prev && prev.total===snap.total && prev.date===snap.date)){
+      store.snapshots.push(snap);
+      if(store.snapshots.length>12) store.snapshots = store.snapshots.slice(-12);
+    }
+    store.lastSelection = {ids:cur.ids, trips:cur.trips, years:cur.years};
+    saveStore(store);
+  }
+}
+function renderHistoryBanner(prev, cur, snaps){
+  const el = document.getElementById("history");
+  if(!prev){
+    el.innerHTML = '<div class="hist-new">📌 この沼度を記録しました。<b>ギアを買い足したら、また診断</b>すると前回との変化が出ます。</div>';
+    return;
+  }
+  const d = cur.total - prev.total;
+  let head, cls;
+  if(d>0){ cls="up"; head="🔥 前回より <b>+"+yen(d)+"</b> 沼が深まりました"; }
+  else if(d<0){ cls="down"; head="🧹 前回より <b>"+yen(Math.abs(d))+" 減</b>（断捨離 or 売却？）"; }
+  else { cls="same"; head="⚖️ 前回から変化なし。沼は静かに見える…"; }
+  const seq = snaps.slice(-4).map(s=>yen(s.total)).concat([yen(cur.total)]).join(" → ");
+  el.innerHTML =
+    '<div class="hist '+cls+'">'+
+      '<div class="hist-h">'+head+'</div>'+
+      '<div class="hist-row">前回 '+yen(prev.total)+'（'+prev.date+'） → 今回 <b>'+yen(cur.total)+'</b></div>'+
+      '<div class="hist-seq">推移: '+seq+'</div>'+
+    '</div>';
+}
+function restoreSelection(){
+  const store = loadStore();
+  const sel = store.lastSelection;
+  if(!sel || !sel.ids || !sel.ids.length) return;
+  sel.ids.forEach(id=>{
+    const el = document.querySelector('.item[data-id="'+id+'"]');
+    if(el && !selected.has(id)){ selected.add(id); el.classList.add("sel"); }
+  });
+  GEAR.forEach(cat=>{
+    const n = cat.items.filter(i=>selected.has(i.id)).length;
+    const ce = document.querySelector('[data-cnt="'+cat.id+'"]');
+    if(ce){ ce.textContent = n ? n+"点 ✓" : "未選択"; ce.classList.toggle("on", n>0); }
+  });
+  if(sel.trips) document.getElementById("trips").value = sel.trips;
+  if(sel.years) document.getElementById("years").value = sel.years;
+  const wb = document.getElementById("restoreBanner");
+  if(wb){
+    wb.style.display = "flex";
+    const last = store.snapshots.length ? store.snapshots[store.snapshots.length-1] : null;
+    document.getElementById("rb-prev").textContent = last ? "（前回の沼度 "+yen(last.total)+"）" : "";
+  }
+}
+document.getElementById("rb-clear").addEventListener("click", ()=>{
+  document.querySelectorAll(".item.sel").forEach(el=>el.classList.remove("sel"));
+  selected.clear();
+  GEAR.forEach(cat=>{ const ce=document.querySelector('[data-cnt="'+cat.id+'"]'); ce.textContent="未選択"; ce.classList.remove("on"); });
+  updateBar();
+  document.getElementById("restoreBanner").style.display="none";
+});
+
+/* ---- init: ?demo=1 はサンプル自動診断 / それ以外は前回構成を復元 ---- */
+(function(){
+  const params = new URLSearchParams(location.search);
+  if(params.get("demo")==="1"){
+    DEMO = true;
+    const demoIds=["tent_mid","tarp_mid","bonfire_mid","sleeping_bag_mid","mat_cot_mid","table_mid","chair_numa","lantern_mid","burner_entry","cooler_mid","cookware_mid","storage_wagon_mid"];
+    demoIds.forEach(id=>{
+      const el=document.querySelector('.item[data-id="'+id+'"]');
+      if(el){ const cat=el.dataset.cat; selected.add(id); el.classList.add("sel");
+        const n=GEAR.find(c=>c.id===cat).items.filter(i=>selected.has(i.id)).length;
+        const ce=document.querySelector('[data-cnt="'+cat+'"]'); ce.textContent=n+"点 ✓"; ce.classList.add("on");
+      }
+    });
+    updateBar();
+    runDiagnosis();
+  } else {
+    restoreSelection();
+  }
+})();
+updateBar();
+</script>
+</body>
+</html>

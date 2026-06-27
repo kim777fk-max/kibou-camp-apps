@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>たてスライス 〜たきびのむこうに〜 | きぼうキャンプラボ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+  :root{ --ink:#fff; --win:#0e1f47; --winb:#ffffff; --accent:#ffb24a; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#0a0c10;color:var(--ink);
+    font-family:'DotGothic16',monospace;-webkit-user-select:none;user-select:none;overflow-x:hidden;}
+  #app{max-width:560px;margin:0 auto;padding:8px 8px 14px;}
+  .screen-wrap{position:relative;width:100%;aspect-ratio:15/11;background:#000;border-radius:10px;overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,.6);}
+  canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;}
+
+  .hud{position:absolute;top:0;left:0;right:0;padding:5px 8px;display:flex;gap:8px;align-items:center;
+    background:linear-gradient(180deg,rgba(8,14,34,.92),rgba(8,14,34,0));font-size:12px;flex-wrap:wrap;z-index:5;}
+  .hud .tag{background:#0e1f47;border:1px solid #fff;border-radius:6px;padding:1px 7px;color:#ffd9a8;}
+  .hud .bar{display:flex;align-items:center;gap:4px;}
+  .hud .meter{width:46px;height:8px;background:#06122e;border:1px solid #5a78bf;border-radius:4px;overflow:hidden;}
+  .hud .meter i{display:block;height:100%;}
+  .hud .hp i{background:#ff5a5a}.hud .wm i{background:#ffb24a}
+  .hud .lbl{color:#9fb6e6}
+
+  .win{position:absolute;left:8px;right:8px;background:var(--win);border:3px solid var(--winb);border-radius:10px;
+    padding:12px 14px;font-size:15px;line-height:1.7;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.5);}
+  #dialog{bottom:8px;min-height:84px;}
+  #dialog .who{color:#ffd9a8;font-size:13px;margin-bottom:2px;}
+  #dialog .more{position:absolute;right:14px;bottom:8px;color:var(--accent);animation:bl 1s steps(2) infinite;}
+  @keyframes bl{50%{opacity:.2}}
+
+  .menu{position:absolute;z-index:11;background:var(--win);border:3px solid var(--winb);border-radius:10px;padding:8px;}
+  #cmd{right:8px;bottom:100px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:15px;}
+  .menu .it{padding:3px 10px 3px 22px;position:relative;cursor:pointer;border-radius:5px;white-space:nowrap;}
+  .menu .it.sel{background:#23407e}
+  .menu .it.sel::before{content:'▶';position:absolute;left:6px;color:var(--accent);}
+
+  .panel{position:absolute;inset:8px;z-index:12;background:var(--win);border:3px solid var(--winb);border-radius:10px;
+    padding:12px 14px;overflow:auto;font-size:13.5px;line-height:1.6;}
+  .panel h3{margin:0 0 8px;font-size:16px;color:#ffd9a8;font-weight:400;}
+  .panel .row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #2a3f72;}
+  .panel .row .nm{flex:1;min-width:0}
+  .panel .row .fl{color:#9fb6e6;font-size:11.5px;}
+  .panel .pr{color:#ffd166;white-space:nowrap}
+  .panel button{font-family:inherit;border:1px solid #fff;color:#fff;border-radius:6px;
+    padding:4px 10px;font-size:12px;cursor:pointer;background:#23407e;white-space:nowrap;}
+  .panel button:disabled{opacity:.4}
+  .panel a.rk{color:#ffd166;font-size:11px;text-decoration:none;border:1px solid #6a5a2a;border-radius:6px;padding:4px 8px;white-space:nowrap;}
+  .panel .equipped{color:#7fe08a;font-size:11px;}
+  .panel .close{position:sticky;bottom:0;display:block;width:100%;margin-top:10px;background:#23407e;}
+  .panel .slotlbl{color:#9fb6e6;font-size:11px;margin:8px 0 2px;}
+
+  .center{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;background:rgba(4,6,12,.82);padding:16px;}
+  .center h1{font-size:24px;margin:0 0 4px;color:#ffce8a;font-weight:400;line-height:1.3;}
+  .center .sub{color:#9fb6e6;font-size:13px;margin-bottom:18px;}
+  .center p{font-size:13px;line-height:1.8;max-width:30em;color:#e7eefc;}
+  .center .big{background:var(--win);border:3px solid #fff;border-radius:10px;padding:10px 22px;font-size:16px;margin:7px;cursor:pointer;color:#fff;font-family:inherit;}
+  .center .big.go{background:#c4561f;border-color:#ffb24a}
+
+  .controls{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;touch-action:manipulation;}
+  .dpad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:4px;}
+  .dpad button,.abtn{font-family:inherit;background:#1a2030;border:1px solid #3a4356;color:#cdd6e6;border-radius:9px;
+    font-size:18px;cursor:pointer;}
+  .dpad button:active,.abtn:active{background:#2a3550}
+  .dpad .u{grid-area:1/2}.dpad .l{grid-area:2/1}.dpad .r{grid-area:2/3}.dpad .d{grid-area:3/2}
+  .dpad .c{grid-area:2/2;border:none;background:transparent}
+  .abuttons{display:flex;gap:10px;align-items:center;}
+  .abtn{width:62px;height:62px;border-radius:50%;font-size:14px;}
+  .abtn.a{background:#3a2018;border-color:#c4561f;color:#ffce8a}
+  .abtn.b{background:#10204a;border-color:#5a78bf;color:#cdd6e6}
+  .hint{text-align:center;color:#5e6b86;font-size:11px;margin-top:8px;line-height:1.6;}
+  .flash{animation:fl .25s}@keyframes fl{from{filter:brightness(2)}to{filter:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="screen-wrap">
+    <canvas id="screen" width="480" height="352"></canvas>
+    <div class="hud" id="hud"></div>
+
+    <div class="win" id="dialog" style="display:none"><div class="who" id="dwho"></div><div id="dtext"></div><div class="more" id="dmore">▼</div></div>
+    <div class="menu" id="cmd" style="display:none"></div>
+    <div class="panel" id="panel" style="display:none"></div>
+
+    <div class="center" id="title">
+      <h1 id="t-name">たてスライス</h1>
+      <div class="sub" id="t-sub"></div>
+      <button class="big go" id="btn-new">はじめから</button>
+      <button class="big" id="btn-continue" style="display:none">つづきから</button>
+      <p id="t-tier" style="margin-top:14px;color:#ffd9a8"></p>
+    </div>
+
+    <div class="center" id="ending" style="display:none">
+      <h1>クリア！</h1>
+      <div class="sub">あさの けしきを みとどけた</div>
+      <p id="e-stats"></p>
+      <button class="big" id="e-share">𝕏 でシェア</button>
+      <button class="big" id="e-cont">たびを つづける</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="dpad">
+      <button class="u" data-dir="up">▲</button>
+      <button class="l" data-dir="left">◀</button>
+      <button class="c"></button>
+      <button class="r" data-dir="right">▶</button>
+      <button class="d" data-dir="down">▼</button>
+    </div>
+    <div class="abuttons">
+      <button class="abtn b" id="btn-b">B<br>メニュー</button>
+      <button class="abtn a" id="btn-a">A<br>けってい</button>
+    </div>
+  </div>
+  <div class="hint">PC: 矢印キーで移動 ／ Z・Enter＝決定/はなす ／ X・Esc＝メニュー/もどる<br>スマホ: 十字キーとA/Bボタン</div>
+</div>
+
+<script>
+/* ============ DATA (4エージェント生成) ============ */
+const ENCOUNTERS = [
+{"id":"niwaka_ame","title":"にわかあめ","symbol":"🌧️","situation":"おひるすぎ、そらがきゅうにくもってきて、ぽつ、ぽつ、とつめたいしずくがおちてきた。「あらら、ふってきちゃった」テントのなかは、まだなにもしまっていない。","options":[
+ {"label":"そらをよんでタープを張る","stat":"skill_weather","difficulty":3,"success":{"text":"あめのくるむきをよんで、さっとタープをはると、にもつはぜんぶかわいたまま、ぱらぱらとあめのおとだけがきこえた。","exp":22,"kokoro":9,"warmth":4,"gold":0},"fail":{"text":"タープのはしっこがめくれて、せなかにぽたっとひとしずく、「ひゃっ、つめたーい」とおもわずわらってしまった。","exp":6,"kokoro":1,"warmth":-4,"gold":0}},
+ {"label":"とりあえずテントに駆け込む","stat":"luck","difficulty":2,"success":{"text":"あわててテントにとびこんだら、あめはすぐにあがって、にじがそらにかかっていた。「なんだ、とおりあめだったか」","exp":14,"kokoro":7,"warmth":2,"gold":0},"fail":{"text":"テントにこもっているあいだに、そとにほしておいたタオルがしっとりぬれてしまった。「ま、またほせばいっか」","exp":4,"kokoro":0,"warmth":-3,"gold":0}}]},
+{"id":"yoru_no_hiekomi","title":"よるのひえこみ","symbol":"🥶","situation":"ひがおちると、やまのくうきはきゅうにつめたくなった。はくいきがしろい。「うう、おもったよりさむいなあ」と、りょうてをこすりあわせる。","options":[
+ {"label":"焚き火を大きくする","stat":"skill_fire","difficulty":2,"success":{"text":"まきをくべなおすと、ぱちぱちとほのおがおおきくなって、ほっぺがじんわりあたたまった。「やっぱり火はいいなあ」","exp":16,"kokoro":10,"warmth":8,"gold":0},"fail":{"text":"けむりがこっちにながれてきて、めがしょぼしょぼ、「けほっ、けほっ」とせきこんでしまった。","exp":5,"kokoro":-1,"warmth":-2,"gold":0}},
+ {"label":"あったかいココアを淹れる","stat":"skill_cook","difficulty":1,"success":{"text":"ゆげのたつマグをりょうてでつつむと、あまいかおりがふわっと、からだのしんまであたたかくなった。","exp":12,"kokoro":9,"warmth":6,"gold":0},"fail":{"text":"おゆをわかしすぎてふきこぼれ、ココアがちょっとうすくなった。「まあ、これはこれでさっぱり」","exp":4,"kokoro":2,"warmth":-1,"gold":0}},
+ {"label":"毛布にくるまって星を見る","stat":"warmth","difficulty":2,"success":{"text":"もうふにすっぽりくるまってそらをみあげると、さむさもわすれるくらいのしずけさが、こころにしみた。","exp":15,"kokoro":11,"warmth":5,"gold":0},"fail":{"text":"もうふがちいさくて、つまさきだけはみだして、「あー、あしさむい」とちぢこまった。","exp":5,"kokoro":1,"warmth":-3,"gold":0}}]},
+{"id":"shimetta_maki","title":"しめったまき","symbol":"🪵","situation":"ひをおこそうとしたら、まきがゆうべのつゆでしっとりしめっている。「うーん、これじゃなかなかつかないぞ」とこまりがお。","options":[
+ {"label":"細く割って乾いた芯を使う","stat":"skill_fire","difficulty":4,"success":{"text":"まきをほそくわって、なかのかわいたしんにそっとひをうつすと、ちいさなほのおがすくすくとそだっていった。","exp":26,"kokoro":12,"warmth":6,"gold":0},"fail":{"text":"なんどマッチをすってもじゅっとけむるばかり、「きょうはきげんがわるいなあ、おまえ」とまきにはなしかけた。","exp":7,"kokoro":-2,"warmth":-5,"gold":0}},
+ {"label":"近くで乾いた小枝を拾う","stat":"luck","difficulty":3,"success":{"text":"きのねもとをのぞくと、あめのあたらないかわいたこえだがどっさり、「こんなところにおたからが」とにっこり。","exp":18,"kokoro":8,"warmth":3,"gold":0},"fail":{"text":"ひろったこえだもやっぱりしっとり、てがどろんこになっただけだった。「ま、てあらいにいくか」","exp":5,"kokoro":0,"warmth":-2,"gold":0}}]},
+{"id":"tanuki_no_oyatsu","title":"おやつねらいのまるいやつ","symbol":"🦝","situation":"テーブルのうえのクッキーのふくろを、しげみのかげからまるいめがじっとみつめている。ふさふさのしっぽがゆれている。「あっ、ねらってるな?」","options":[
+ {"label":"そっとおやつを片づける","stat":"warmth","difficulty":2,"success":{"text":"やさしくクッキーをしまうと、まるいやつはちょっとざんねんそうに、でもおこりもせずやぶへかえっていった。","exp":14,"kokoro":8,"warmth":5,"gold":0},"fail":{"text":"てをのばしたすきに、ひとつだけくわえてささっとにげられた。「あー、もってかれたー」とおもわずわらう。","exp":6,"kokoro":2,"warmth":-2,"gold":0}},
+ {"label":"少しだけ離れて見守る","stat":"luck","difficulty":3,"success":{"text":"じっとまっていると、まるいやつはくんくんとにおいをかいで、ぺこりとおじぎするみたいにきえていった。「かわいいなあ」","exp":17,"kokoro":13,"warmth":4,"gold":0},"fail":{"text":"めをはなしたすきに、ふくろごとひきずられて、しげみのなかでがさごそ、「あー、ぜんぶいっちゃった」","exp":5,"kokoro":1,"warmth":-3,"gold":0}}]},
+{"id":"manten_no_hoshizora","title":"まんてんのほしぞら","symbol":"✨","situation":"よふけ、ふとそらをみあげると、こぼれおちそうなほどのほしがいちめんにかがやいていた。「うわぁ……」とことばをうしなって、ただみとれてしまう。","options":[
+ {"label":"寝転んでゆっくり眺める","stat":"warmth","difficulty":1,"success":{"text":"ぐるりとてんのがわまでみえて、ときどきながれぼしがすっとよぎる、いつまでもみていられるよるだった。","exp":13,"kokoro":15,"warmth":6,"gold":0},"fail":{"text":"ねころんだらそのままうとうと、きづいたらほっぺにつゆがついていた。「いつのまにねてたんだ、おれ」","exp":6,"kokoro":5,"warmth":-1,"gold":0}},
+ {"label":"星座を探してみる","stat":"skill_weather","difficulty":3,"success":{"text":"ひしゃくのかたちをみつけて、そこからつぎつぎとほしをたどっていく、こどものころのわくわくがよみがえった。","exp":20,"kokoro":12,"warmth":4,"gold":0},"fail":{"text":"どれがどのほしかさっぱりわからず、「まあ、きれいだからいいか」とのんびりわらった。","exp":5,"kokoro":4,"warmth":0,"gold":0}}]},
+{"id":"tonari_no_solo","title":"となりのたきびトーク","symbol":"🔥","situation":"となりのサイトのソロキャンパーが、たきびごしにぺこりとあたまをさげた。「こんばんは、いいよるですね」とおだやかなこえがきこえてくる。","options":[
+ {"label":"焚き火を囲んで語らう","stat":"warmth","difficulty":2,"success":{"text":"ぽつりぽつりとキャンプのおもいでをはなすうちに、しらないどうしなのに、ずっとまえからのともだちみたいになった。","exp":19,"kokoro":13,"warmth":7,"gold":0},"fail":{"text":"きんちょうしてことばがでてこず、「えっと、あの、その」とどもってしまった、でもふたりでくすっとわらった。","exp":7,"kokoro":3,"warmth":-1,"gold":0}},
+ {"label":"コーヒーを淹れてふるまう","stat":"skill_cook","difficulty":3,"success":{"text":"いっぱいのコーヒーをわたすと、「ありがとう、しみるなあ」とよろこばれ、おれいにおかしまでもらってしまった。","exp":21,"kokoro":11,"warmth":5,"gold":120},"fail":{"text":"コーヒーがにがすぎたみたいで、あいてのまゆがちょっとよった、「お、おいしい……です」とむりにわらってた。","exp":6,"kokoro":1,"warmth":-2,"gold":0}},
+ {"label":"会釈だけして静かに過ごす","stat":"luck","difficulty":1,"success":{"text":"おたがいえしゃくして、それぞれのたきびをみつめる、ことばはなくてもここちよいきょりかんだった。","exp":11,"kokoro":7,"warmth":2,"gold":0},"fail":{"text":"えしゃくのタイミングがずれて、ふたりしてもういちどぺこり、「あっ、どうも」となんだかてれくさい。","exp":4,"kokoro":2,"warmth":-1,"gold":0}}]},
+{"id":"sawa_no_mizukumi","title":"さわのみずくみ","symbol":"💧","situation":"サイトのおくに、さらさらとながれるちいさなさわがある。「コーヒーのみずでも、くんでこようかな」とやかんをてにとる。","options":[
+ {"label":"澄んだ流れを選んで汲む","stat":"skill_weather","difficulty":2,"success":{"text":"いちばんすんだながれをえらんでくむと、つめたくてきよらかなみずがやかんいっぱいにたまった。「これはうまいコーヒーになるぞ」","exp":16,"kokoro":9,"warmth":3,"gold":0},"fail":{"text":"あしもとのいしがつるっとすべって、くつのなかまでびしょびしょ、「うわっ、つめたっ」とぴょんとはねた。","exp":6,"kokoro":0,"warmth":-4,"gold":0}},
+ {"label":"石をつたって上流まで行く","stat":"luck","difficulty":4,"success":{"text":"いしをぴょんぴょんつたっていくと、じょうりゅうでちいさなたきをみつけた、みずもこころもきらきらだ。","exp":24,"kokoro":12,"warmth":4,"gold":0},"fail":{"text":"とちゅうのいしでバランスをくずして、おしりからぽちゃん、「ひゃー、おもいでができたな」とずぶぬれでわらう。","exp":7,"kokoro":2,"warmth":-5,"gold":0}}]},
+{"id":"asamoya_no_tettai","title":"あさもやのてったい","symbol":"🌫️","situation":"あさ、しろいもやがやまをやさしくつつんでいる。なごりおしいけれど、そろそろテントをたたむじかんだ。「さて、かえりじたくしようか」","options":[
+ {"label":"丁寧にテントを乾かしてたたむ","stat":"skill_weather","difficulty":3,"success":{"text":"もやがはれるのをまって、てんとをぱりっとかわかしてからたたむと、つぎもきもちよくつかえそうだ。「うん、いいしごとした」","exp":22,"kokoro":10,"warmth":4,"gold":0},"fail":{"text":"まちきれずにたたんだら、てんとがしっとりおもたいまま、「まあ、いえでほせばいいか」とふくろにつめた。","exp":6,"kokoro":1,"warmth":-2,"gold":0}},
+ {"label":"もやの景色を写真におさめる","stat":"warmth","difficulty":2,"success":{"text":"もやのなかにうかぶテントをいちまい、しゃしんにおさめると、このよるがずっとてのひらにのこるきがした。","exp":15,"kokoro":14,"warmth":5,"gold":0},"fail":{"text":"レンズがくもってまっしろなしゃしんになった、「これはこれで、もやってるってことで」とくすくす。","exp":5,"kokoro":3,"warmth":0,"gold":0}},
+ {"label":"最後にゴミを拾って帰る","stat":"warmth","difficulty":1,"success":{"text":"じぶんのぶんも、おちていたぶんも、ぜんぶひろってから「ありがとう」とサイトにあたまをさげた、きもちのいいあさだ。","exp":13,"kokoro":11,"warmth":6,"gold":0},"fail":{"text":"ふくろのくちがほどけてゴミがぱらり、もういちどひろいなおして「あぶないあぶない」とちょっとてれた。","exp":5,"kokoro":3,"warmth":-1,"gold":0}}]}
+];
+
+const GEAR = [
+ {"id":"tent_dome_starter","slot":"tent","name":"ドーム型テント(コールマン風)","price":12800,"flavor":"設営10分、まずはここから。雨でも泣かないエントリーの定番。","bonus":{"warmth":4,"kokoro":2,"skill_fire":0,"skill_cook":0,"skill_weather":1,"maxhp":6},"rakutenKeyword":"ドームテント 2人用 初心者"},
+ {"id":"tent_onepole_dod","slot":"tent","name":"ワンポールテント(DOD風)","price":29800,"flavor":"一本柱で建つ三角の城。中で焚き火を眺める贅沢が手に入る。","bonus":{"warmth":9,"kokoro":4,"skill_fire":0,"skill_cook":0,"skill_weather":2,"maxhp":11},"rakutenKeyword":"ワンポールテント ティピー"},
+ {"id":"sleep_envelope_basic","slot":"sleep","name":"封筒型シュラフ(キャプテンスタッグ風)","price":3980,"flavor":"夏の高原ならこれで十分。布団感覚で眠れる安心の一枚。","bonus":{"warmth":6,"kokoro":1,"skill_fire":0,"skill_cook":0,"skill_weather":0,"maxhp":4},"rakutenKeyword":"封筒型 寝袋 3シーズン"},
+ {"id":"sleep_down_mummy","slot":"sleep","name":"ダウンマミーシュラフ(ナンガ風)","price":38000,"flavor":"氷点下でもぬくぬく。羽毛に包まれれば朝までHPが減らない。","bonus":{"warmth":18,"kokoro":3,"skill_fire":0,"skill_cook":0,"skill_weather":1,"maxhp":14},"rakutenKeyword":"ダウン シュラフ マミー型 冬用"},
+ {"id":"fire_starter_ferro","slot":"fire","name":"メタルマッチ火打ち石(無印風)","price":980,"flavor":"削れば火花、当たれば着火。火起こしの基礎体力がついてくる。","bonus":{"warmth":2,"kokoro":1,"skill_fire":2,"skill_cook":0,"skill_weather":0,"maxhp":0},"rakutenKeyword":"ファイヤースターター メタルマッチ"},
+ {"id":"fire_stand_solo","slot":"fire","name":"二次燃焼焚き火台(ソロストーブ風)","price":16500,"flavor":"煙少なく炎は高く。よく燃える炎は心も体もあたためる。","bonus":{"warmth":12,"kokoro":5,"skill_fire":5,"skill_cook":1,"skill_weather":0,"maxhp":5},"rakutenKeyword":"二次燃焼 焚き火台 ソロ"},
+ {"id":"cook_messkit_alumi","slot":"cook","name":"アルミ飯盒メスティン(トランギア風)","price":2480,"flavor":"炊く・煮る・蒸す、これ一個。自動炊飯デビューの相棒。","bonus":{"warmth":1,"kokoro":2,"skill_fire":0,"skill_cook":3,"skill_weather":0,"maxhp":3},"rakutenKeyword":"メスティン 飯盒 アルミ"},
+ {"id":"cook_dutch_oven","slot":"cook","name":"鋳鉄ダッチオーブン(ロッジ風)","price":11800,"flavor":"重い鉄の塊が、ほったらかしで絶品料理を吐き出す魔法の鍋。","bonus":{"warmth":3,"kokoro":4,"skill_fire":1,"skill_cook":6,"skill_weather":0,"maxhp":7},"rakutenKeyword":"ダッチオーブン 鋳鉄 10インチ"},
+ {"id":"light_led_lantern","slot":"light","name":"充電式LEDランタン(ジェントス風)","price":2980,"flavor":"ボタンひとつでぽっと灯る。暗闇の不安をそっと拭ってくれる。","bonus":{"warmth":0,"kokoro":3,"skill_fire":0,"skill_cook":0,"skill_weather":2,"maxhp":2},"rakutenKeyword":"LEDランタン 充電式 キャンプ"},
+ {"id":"light_gas_lantern","slot":"light","name":"ガスランタン(コールマン風)","price":9800,"flavor":"シューッと灯るマントルの暖色光。夜のサイトが一気に映画になる。","bonus":{"warmth":3,"kokoro":6,"skill_fire":1,"skill_cook":0,"skill_weather":3,"maxhp":3},"rakutenKeyword":"ガスランタン マントル キャンプ"},
+ {"id":"chair_folding_basic","slot":"chair","name":"コンパクト折りたたみ椅子(ヘリノックス風)","price":4980,"flavor":"畳めば手のひら、広げれば特等席。座った瞬間に旅の疲れが抜ける。","bonus":{"warmth":0,"kokoro":5,"skill_fire":0,"skill_cook":0,"skill_weather":0,"maxhp":3},"rakutenKeyword":"アウトドアチェア コンパクト 軽量"},
+ {"id":"chair_low_relax","slot":"chair","name":"ローバックリラックスチェア(コールマン風)","price":8900,"flavor":"焚き火と目線が合う低さ。一度沈むと立ち上がれない罪な座り心地。","bonus":{"warmth":1,"kokoro":9,"skill_fire":0,"skill_cook":0,"skill_weather":0,"maxhp":5},"rakutenKeyword":"ローチェア リラックス キャンプ"}
+];
+const START_GEAR = ["fire_starter_ferro","sleep_envelope_basic","tent_dome_starter"];
+const SKILLS = [
+ {"id":"skill_firestart","name":"火起こしの心得","learnLv":2,"stat":"skill_fire","power":2,"desc":"火種を素早く育て、湿った薪でも一発で炎を立ち上げる。"},
+ {"id":"skill_pitching","name":"設営マスター","learnLv":4,"stat":"warmth","power":3,"desc":"風向きを読んで張る一枚布が、夜露と寒さをきっちり防ぐ。"},
+ {"id":"skill_weatherread","name":"天気読み","learnLv":6,"stat":"skill_weather","power":3,"desc":"雲の流れと風で雨を先読みし、降る前に撤収判断を下す。"},
+ {"id":"skill_smoking","name":"燻製の極意","learnLv":8,"stat":"skill_cook","power":4,"desc":"チップの温度を操り、ありふれた食材を香り高い保存食へ昇華させる。"},
+ {"id":"skill_bushcamp","name":"野営めし","learnLv":11,"stat":"luck","power":5,"desc":"現地調達と火加減の総合力で、何もない夜から最高の一皿を引き当てる。"}
+];
+const STORY = {
+ "title":{"name":"たてスライス 〜たきびのむこうに〜","subtitle":"ゆるくて、あたたかい、ひとりキャンプ物語","intro":"むかしむかし、まちのはずれに「のんびり谷」とよばれる、しずかな山あいの土地があった。あるひ、ひとりの旅人が、はじめてのテントとちいさなランタンをかかえて、その谷へとやってきた。「さあ、なにから はじめようかな」――こうして、まきのにおいとほしぞらの たびが はじまったのです。"},
+ "npcs":[
+  {"id":"guide","name":"こもりん","role":"guide","lines":["「ようこそ、のんびり谷へ。わたしは こもりん。ここの あんないやくだよ」","「まずは ボタンで うごいてみて。あわてなくて だいじょうぶ」","「テントは『そうび』からはれるよ。よるのまえに たてておこうね」","「くさむらでは ときどき なにかが おこる。あわてず たのしんでね」","「キャンプはね、はやさより、ゆっくり たのしむのが いちばんだよ」"]},
+  {"id":"shop","name":"とげぞう","role":"shop","lines":["「いらっしゃい。どうぐ屋『まきと炎』へ ようこそ」","「ランタンも まきも まくらも、ぜんぶ そろってるぜ」","「いいギアは いいおもいでを つれてくる。これ、おれの くちぐせ」"]},
+  {"id":"quest","name":"しらやまのぬし","role":"quest","lines":["「よく きたな、たびのもの。わしは この雪山に すまう しらやまのぬしじゃ」","「人は いそぎすぎて、あさの けしきを わすれてしもうた」","「ひとばん、わしの ふもとで すごしてみよ。なにかが みえるはずじゃ」","「やまは にげぬ。ゆっくりと、こころを あたためてゆけ」"]},
+  {"id":"villager","name":"のの","role":"villager","lines":["「あさの 空気って、なんだか すきなんだ」","「ぬしさまの 山はね、てっぺんが いつも しろいの」","「キャンプの ひとって、みんな いい かおして かえってくるよ」"]},
+  {"id":"villager2","name":"はる","role":"villager2","lines":["「まきの においが すると、ほっと するなあ」","「ゆうべは ほしが すごかったよ。みた?」","「むりせず、ゆっくり いってらっしゃい」"]}
+ ],
+ "quest":{"title":"あさの けしきを みにいこう","brief":"しらやまのぬしが、ひとつ たのみごとが あるという。「あさの けしきを わすれた人が おおい」と、ぬしは しずかに わらった。","goal":"雪山の ふもとの サイト（あかい たきびマーク）で「たき火」を えらび、ひとばん やえいする。","clearText":"テントの ファスナーを あけると、しろい 山はだが あさひに そまっていた。つめたい 空気が ほおを なで、とおくで とりが ひとこえ ないた。「ああ、これを みに きたんだ」――むねの おくが、ゆっくりと あたたかくなった。","rewardExp":80,"rewardGold":450},
+ "titleByTier":[
+  {"tier":"にわか","shougou":"はじめての まきびと","bonus":{"warmth":2,"kokoro":1,"gold":30,"skill_fire":1}},
+  {"tier":"沼入門","shougou":"ランタンに みせられし者","bonus":{"warmth":4,"kokoro":2,"gold":50,"skill_fire":2}},
+  {"tier":"中級沼","shougou":"たきびを かこむ常連","bonus":{"warmth":6,"kokoro":4,"gold":80,"skill_fire":4}},
+  {"tier":"重度沼","shougou":"ギアに とりつかれし旅人","bonus":{"warmth":9,"kokoro":6,"gold":120,"skill_fire":6}},
+  {"tier":"廃人","shougou":"よなよな野営の達人","bonus":{"warmth":12,"kokoro":9,"gold":160,"skill_fire":9}},
+  {"tier":"沼の主","shougou":"のんびり谷の番人","bonus":{"warmth":16,"kokoro":13,"gold":220,"skill_fire":12}},
+  {"tier":"沼の神","shougou":"まきと炎を つかさどりし者","bonus":{"warmth":20,"kokoro":18,"gold":300,"skill_fire":16}}
+ ],
+ "systemCopy":{"levelUp":"レベル {lv} に なった！ こころが すこし たくましく、そして やわらかくなった。","camp":"やえいで ひとやすみ。まきが ぱちぱちと はぜ、つかれが すっと ぬけていく。","save":"きょうの たびを、てちょうに そっと かきとめた。","badWeatherWin":"あめかぜを やりすごし、ぶじ あさを むかえた。すこし たくましくなった きがする。","encounterIntro":"ふいに、なにかの けはいが――"}
+};
+
+/* ============ MAP ============ */
+function genMap(){
+  const W=30,H=24, t=[];
+  for(let y=0;y<H;y++) t.push(new Array(W).fill('.'));
+  for(let x=0;x<W;x++){ t[0][x]='^'; t[H-1][x]='^'; }
+  for(let y=0;y<H;y++){ t[y][0]='^'; t[y][W-1]='^'; }
+  for(let x=1;x<W-1;x++){ t[1][x]='^'; t[2][x]='^'; }
+  const PX=14;
+  t[1][PX]='G'; t[2][PX]='*'; t[2][PX-1]='*'; t[2][PX+1]='*'; t[3][PX]='*';
+  for(let y=3;y<=16;y++) t[y][PX]='#';
+  for(let y=6;y<=10;y++) for(let x=23;x<=27;x++) t[y][x]='~';
+  t[6][23]='.'; t[6][27]='.'; t[10][23]='.'; t[10][27]='.';
+  [[8,6,3,2],[16,7,3,2],[7,10,3,2],[17,11,3,2],[10,13,3,1]].forEach(([gx,gy,gw,gh])=>{
+    for(let y=gy;y<gy+gh;y++) for(let x=gx;x<gx+gw;x++) if(t[y][x]==='.') t[y][x]='g'; });
+  [[5,5],[7,8],[20,5],[22,12],[6,13],[24,14],[8,9],[20,9],[11,10],[21,8],[25,16],[5,16]].forEach(([x,y])=>{ if(t[y][x]==='.') t[y][x]='T'; });
+  for(let y=16;y<=21;y++) for(let x=9;x<=20;x++) if(t[y][x]==='.'||t[y][x]==='#') t[y][x]='o';
+  const signs={};
+  t[18][12]='s'; signs['12,18']='「のんびり谷 キャンプじょう」 ――ここが たびの きてんだ。';
+  t[18][18]='s'; signs['18,18']='「どうぐや まきと炎」 みせの人 とげぞうに はなしかけよう。';
+  t[8][PX+2]='s'; signs[(PX+2)+',8']='「この さき くさむら。 なにか でるかも しれん」';
+  const npcs=[
+    {role:'guide', x:11, y:19, dir:'down'},
+    {role:'shop', x:17, y:18, dir:'down'},
+    {role:'villager', x:10, y:20, dir:'right'},
+    {role:'villager2', x:19, y:20, dir:'left'},
+    {role:'quest', x:13, y:4, dir:'down'},
+  ];
+  return {tiles:t, W, H, start:{x:PX,y:20}, goal:{x:PX,y:1}, npcs, signs};
+}
+
+/* ============ STATE ============ */
+const TILE=32, VIEW_W=15, VIEW_H=11;
+const WALK = new Set(['.','#','o','g','*','G']);
+const cv=document.getElementById('screen'), ctx=cv.getContext('2d');
+let MAP, player, state='title', cam={x:0,y:0}, encCooldown=0;
+let dialogQ=[], dialogWho='', dialogAfter=null;
+let cmdItems=[], cmdSel=0, encData=null, encSel=0, panelMode=null, panelSel=0;
+const NPC = STORY.npcs.reduce((a,n)=>(a[n.role]=n,a),{});
+const gearById=id=>GEAR.find(g=>g.id===id);
+const skillById=id=>SKILLS.find(s=>s.id===id);
+const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+const SAVE_KEY='camp_quest_v1';
+const GOLD_MULT=25;   // エンカウント/クエストの¥獲得をギア価格スケールに合わせる
+
+function newPlayer(){
+  const p={lv:1,exp:0,hp:30,warmth:60,kokoro:0,gold:12000,owned:[...START_GEAR],equip:{},skills:[],
+    x:0,y:0,dir:'up',shougou:'はじめての まきびと',questActive:false,questClear:false,steps:0};
+  ['tent_dome_starter','sleep_envelope_basic','fire_starter_ferro'].forEach(id=>{ const g=gearById(id); if(g) p.equip[g.slot]=id; });
+  // 沼度診断の引き継ぎ
+  let inherited=null;
+  try{
+    const s=JSON.parse(localStorage.getItem('camp_numado_v1'));
+    if(s&&s.snapshots&&s.snapshots.length){
+      const tierName=s.snapshots[s.snapshots.length-1].tier||'';
+      const keys=['沼の神','沼の主','廃人','重度沼','中級沼','沼入門','にわか'];
+      const key=keys.find(k=>tierName.indexOf(k)>=0);
+      const tb=STORY.titleByTier.find(x=>x.tier===key);
+      if(tb){ p.shougou=tb.shougou; p.warmth+=tb.bonus.warmth; p.kokoro+=tb.bonus.kokoro; p.gold+=tb.bonus.gold; p._fireBonus=tb.bonus.skill_fire; inherited={tier:key,shougou:tb.shougou}; }
+    }
+  }catch(e){}
+  return {p,inherited};
+}
+function expNext(){ return player.lv*30; }
+function hpMax(){ let m=30+player.lv*4; for(const s in player.equip){ const g=gearById(player.equip[s]); if(g) m+=g.bonus.maxhp; } return m; }
+function statVal(stat){
+  let v=player.lv;
+  for(const s in player.equip){ const g=gearById(player.equip[s]); if(g) v+=g.bonus[stat]||0; }
+  player.skills.forEach(id=>{ const sk=skillById(id); if(sk&&sk.stat===stat) v+=sk.power; });
+  if(stat==='skill_fire') v+=(player._fireBonus||0);
+  if(stat==='luck') v+=2;
+  if(stat==='warmth') v+=Math.floor(player.warmth/12);
+  return v;
+}
+
+/* ============ RENDER ============ */
+function tColor(c){return {'.':'#3f7a35','#':'#c7a368','o':'#5f8a3e','g':'#2f6b2a','~':'#2f74b5','*':'#e8eef2','^':'#6e7a86','T':'#3f7a35','s':'#3f7a35','G':'#e8eef2'}[c]||'#3f7a35';}
+function drawTile(c,px,py,gx,gy){
+  ctx.fillStyle=tColor(c); ctx.fillRect(px,py,TILE,TILE);
+  if(c==='.'||c==='o'||c==='g'){ ctx.fillStyle=(c==='o')?'#6f9a48':((gx*7+gy*13)%4===0?'#377030':'#458a3a');
+    ctx.fillRect(px+6,py+8,3,4); ctx.fillRect(px+18,py+20,3,4); }
+  if(c==='g'){ ctx.fillStyle='#1f4d1c'; for(let i=0;i<4;i++){ ctx.fillRect(px+5+i*7,py+10+((i%2)*8),2,12);} ctx.fillStyle='#5fb04a'; ctx.fillRect(px+9,py+8,2,10); }
+  if(c==='~'){ ctx.fillStyle='#69aee0'; ctx.fillRect(px+4,py+6,12,2); ctx.fillStyle='#2660a0'; ctx.fillRect(px+8,py+20,16,2); }
+  if(c==='*'||c==='G'){ ctx.fillStyle='#d2dce6'; ctx.fillRect(px+5,py+18,8,2); ctx.fillRect(px+18,py+9,7,2); }
+  if(c==='^'){ ctx.fillStyle='#5a6671'; ctx.beginPath(); ctx.moveTo(px+16,py+4); ctx.lineTo(px+30,py+30); ctx.lineTo(px+2,py+30); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#eef2f6'; ctx.beginPath(); ctx.moveTo(px+16,py+4); ctx.lineTo(px+22,py+15); ctx.lineTo(px+10,py+15); ctx.closePath(); ctx.fill(); }
+  if(c==='T'){ ctx.fillStyle='#6b4a2b'; ctx.fillRect(px+14,py+20,4,9); ctx.fillStyle='#2c6b3f'; ctx.beginPath(); ctx.arc(px+16,py+15,11,0,7); ctx.fill(); ctx.fillStyle='#357a48'; ctx.beginPath(); ctx.arc(px+16,py+12,7,0,7); ctx.fill(); }
+  if(c==='s'){ ctx.fillStyle='#8a6a3a'; ctx.fillRect(px+14,py+14,4,14); ctx.fillStyle='#c9a05a'; ctx.fillRect(px+7,py+8,18,9); ctx.strokeStyle='#5a4222'; ctx.strokeRect(px+7,py+8,18,9); }
+  if(c==='G'){ ctx.strokeStyle='#7a7a7a'; for(let i=0;i<6;i++){ const a=i*1.05; ctx.fillStyle='#8a8a8a'; ctx.fillRect(px+15+Math.cos(a)*10-2,py+18+Math.sin(a)*6-2,4,4);}
+    ctx.fillStyle='#ff7a1a'; ctx.beginPath(); ctx.moveTo(px+16,py+6); ctx.lineTo(px+22,py+20); ctx.lineTo(px+10,py+20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.moveTo(px+16,py+12); ctx.lineTo(px+19,py+20); ctx.lineTo(px+13,py+20); ctx.closePath(); ctx.fill(); }
+}
+const PAL={ player:{j:'#d8503a',s:'#f0c9a8',h:'#3a2a20'}, guide:{j:'#3f9a55',s:'#f0c9a8',h:'#5a3a22'},
+  shop:{j:'#9a6a30',s:'#f0c9a8',h:'#2a2a2a'}, quest:{j:'#6f7fae',s:'#ead6bf',h:'#dddddd'},
+  villager:{j:'#c77fae',s:'#f0c9a8',h:'#3a2a20'}, villager2:{j:'#4a9fb5',s:'#f0c9a8',h:'#2a2a2a'} };
+function drawChar(px,py,pal,dir){
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px+16,py+29,9,3,0,0,7); ctx.fill();
+  ctx.fillStyle=pal.j; ctx.fillRect(px+9,py+15,14,12);
+  ctx.fillStyle='#33414f'; ctx.fillRect(px+10,py+26,4,4); ctx.fillRect(px+18,py+26,4,4);
+  ctx.fillStyle=pal.s; ctx.beginPath(); ctx.arc(px+16,py+11,7,0,7); ctx.fill();
+  ctx.fillStyle=pal.h; ctx.beginPath(); ctx.ellipse(px+16,py+8,7,4.5,0,0,7); ctx.fill();
+  ctx.fillStyle='#222'; if(dir==='down'||!dir){ ctx.fillRect(px+12,py+11,2,2); ctx.fillRect(px+18,py+11,2,2);} }
+
+function render(){
+  cam.x=Math.max(0,Math.min(MAP.W-VIEW_W, player.x-7));
+  cam.y=Math.max(0,Math.min(MAP.H-VIEW_H, player.y-5));
+  for(let vy=0;vy<VIEW_H;vy++) for(let vx=0;vx<VIEW_W;vx++){
+    const gx=cam.x+vx, gy=cam.y+vy; const c=(MAP.tiles[gy]&&MAP.tiles[gy][gx])||'^';
+    drawTile(c, vx*TILE, vy*TILE, gx, gy);
+  }
+  // quest goal marker pulse
+  MAP.npcs.forEach(n=>{ const sx=(n.x-cam.x)*TILE, sy=(n.y-cam.y)*TILE;
+    if(n.x>=cam.x&&n.x<cam.x+VIEW_W&&n.y>=cam.y&&n.y<cam.y+VIEW_H) drawChar(sx,sy,PAL[n.role],n.dir); });
+  drawChar((player.x-cam.x)*TILE,(player.y-cam.y)*TILE,PAL.player,player.dir);
+  drawHud();
+}
+function drawHud(){
+  const h=document.getElementById('hud');
+  const hm=hpMax();
+  h.innerHTML='<span class="tag">'+player.shougou+'</span>'+
+    '<span class="bar"><span class="lbl">Lv</span><b>'+player.lv+'</b></span>'+
+    '<span class="bar hp"><span class="lbl">体力</span><span class="meter"><i style="width:'+Math.round(player.hp/hm*100)+'%"></i></span></span>'+
+    '<span class="bar wm"><span class="lbl">ぬくもり</span><span class="meter"><i style="width:'+Math.round(player.warmth)+'%"></i></span></span>'+
+    '<span class="bar"><span class="lbl">こころ</span><b>'+player.kokoro+'</b></span>'+
+    '<span class="tag">'+yen(player.gold)+'</span>';
+}
+
+/* ============ MOVEMENT & INTERACTION ============ */
+function blocked(x,y){
+  if(x<0||y<0||x>=MAP.W||y>=MAP.H) return true;
+  if(!WALK.has(MAP.tiles[y][x])) return true;
+  if(MAP.npcs.some(n=>n.x===x&&n.y===y)) return true;
+  return false;
+}
+function move(dir){
+  if(state!=='play') return;
+  player.dir=dir;
+  const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir];
+  const nx=player.x+d[0], ny=player.y+d[1];
+  if(blocked(nx,ny)){ render(); return; }
+  player.x=nx; player.y=ny; player.steps++;
+  render();
+  if(encCooldown>0) encCooldown--;
+  if(MAP.tiles[ny][nx]==='g' && encCooldown===0 && Math.random()<0.32){ startEncounter(); }
+}
+function frontTile(){ const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[player.dir]; return {x:player.x+d[0],y:player.y+d[1]}; }
+
+function action(){
+  if(state==='dialog'){ advanceDialog(); return; }
+  if(state==='menu'){ chooseCmd(); return; }
+  if(state==='encounter'){ chooseEnc(); return; }
+  if(state==='play'){
+    const f=frontTile();
+    const npc=MAP.npcs.find(n=>n.x===f.x&&n.y===f.y);
+    if(npc){ talkNpc(npc); return; }
+    const sign=MAP.signs[f.x+','+f.y];
+    if(sign){ say('', [sign]); return; }
+    openCmd();
+  }
+}
+function cancel(){
+  if(state==='menu'){ closeCmd(); return; }
+  if(state==='panel'){ closePanel(); return; }
+  if(state==='dialog'){ return; }
+  if(state==='play'){ openCmd(); }
+}
+
+/* ---- dialog ---- */
+function say(who, lines, after){ dialogWho=who; dialogQ=lines.slice(); dialogAfter=after||null; state='dialog'; showDialog(); }
+function showDialog(){
+  document.getElementById('dwho').textContent=dialogWho||'';
+  document.getElementById('dwho').style.display=dialogWho?'block':'none';
+  document.getElementById('dtext').textContent=dialogQ[0]||'';
+  document.getElementById('dialog').style.display='block';
+}
+function advanceDialog(){
+  dialogQ.shift();
+  if(dialogQ.length){ showDialog(); }
+  else { document.getElementById('dialog').style.display='none'; state='play'; const a=dialogAfter; dialogAfter=null; if(a) a(); }
+}
+function talkNpc(npc){
+  const data=NPC[npc.role];
+  if(npc.role==='shop'){ say(data.name, [data.lines[0]], openShop); return; }
+  if(npc.role==='quest' && !player.questActive && !player.questClear){
+    say(data.name, data.lines, ()=>{ player.questActive=true; say('', [STORY.quest.brief, '【クエスト】'+STORY.quest.goal]); save(); });
+    return;
+  }
+  say(data.name, data.lines);
+}
+
+/* ---- command menu ---- */
+function openCmd(){
+  cmdItems=['はなす','しらべる','どうぐ','たき火','スキル','つよさ'];
+  cmdSel=0; state='menu'; renderCmd();
+}
+function renderCmd(){
+  const el=document.getElementById('cmd');
+  el.innerHTML=cmdItems.map((t,i)=>'<div class="it'+(i===cmdSel?' sel':'')+'">'+t+'</div>').join('');
+  el.style.display='grid';
+  [...el.children].forEach((c,i)=>c.onclick=()=>{ cmdSel=i; chooseCmd(); });
+}
+function closeCmd(){ document.getElementById('cmd').style.display='none'; state='play'; }
+function moveCmd(dy,dx){ if(dy) cmdSel=(cmdSel+dy*2+6)%6; if(dx) cmdSel=(cmdSel+dx+6)%6; renderCmd(); }
+function chooseCmd(){
+  const t=cmdItems[cmdSel]; closeCmd();
+  if(t==='はなす'||t==='しらべる'){ const f=frontTile(); const npc=MAP.npcs.find(n=>n.x===f.x&&n.y===f.y);
+    if(npc){ talkNpc(npc); } else { const s=MAP.signs[f.x+','+f.y]; say('', [s|| (t==='しらべる'?'とくに なにも ないようだ。':'だれも いない。 ふりむけば だれか いるかも。')]); } return; }
+  if(t==='どうぐ'){ openPanel('inv'); return; }
+  if(t==='スキル'){ openPanel('skill'); return; }
+  if(t==='つよさ'){ openPanel('status'); return; }
+  if(t==='たき火'){ doCamp(); return; }
+}
+
+/* ---- camp ---- */
+function doCamp(){
+  const onGoal=(player.x===MAP.goal.x&&player.y===MAP.goal.y)||(MAP.tiles[player.y][player.x]==='G');
+  if(onGoal && player.questActive && !player.questClear){
+    player.questClear=true; player.exp+=STORY.quest.rewardExp; player.gold+=STORY.quest.rewardGold*GOLD_MULT;
+    const lvMsgs=checkLevel();
+    say('', [STORY.quest.clearText, 'けいけんち +'+STORY.quest.rewardExp+' ／ '+yen(STORY.quest.rewardGold*GOLD_MULT)+' を てにいれた！', ...lvMsgs], ()=>{ save(); showEnding(); });
+    return;
+  }
+  player.hp=hpMax(); player.warmth=Math.min(100,player.warmth+25); player.kokoro+=2;
+  say('', [STORY.systemCopy.camp], ()=>{ save(); render(); });
+}
+
+/* ---- encounter ---- */
+function startEncounter(){
+  encData=ENCOUNTERS[Math.floor(Math.random()*ENCOUNTERS.length)]; encSel=0; state='encounter';
+  say('', [STORY.systemCopy.encounterIntro, encData.symbol+' '+encData.title, encData.situation], showEncMenu);
+}
+function showEncMenu(){
+  state='encounter';
+  const el=document.getElementById('cmd');
+  el.style.display='grid'; el.style.gridTemplateColumns='1fr';
+  el.style.bottom='16px'; el.style.right='8px'; el.style.left='8px';
+  el.innerHTML=encData.options.map((o,i)=>'<div class="it'+(i===encSel?' sel':'')+'">'+o.label+' <span style="color:#9fb6e6;font-size:11px">['+statLabel(o.stat)+']</span></div>').join('');
+  [...el.children].forEach((c,i)=>c.onclick=()=>{ encSel=i; chooseEnc(); });
+}
+function statLabel(s){ return {warmth:'ぬくもり',skill_fire:'火',skill_cook:'料理',skill_weather:'天気',luck:'うん'}[s]||s; }
+function moveEnc(dy){ encSel=(encSel+dy+encData.options.length)%encData.options.length; showEncMenu(); }
+function chooseEnc(){
+  const o=encData.options[encSel];
+  const el=document.getElementById('cmd'); el.style.display='none'; el.style.gridTemplateColumns=''; el.style.left=''; el.style.bottom='100px';
+  const v=statVal(o.stat), roll=v+1+Math.floor(Math.random()*6), ok=roll>=o.difficulty*3+2;
+  const r=ok?o.success:o.fail;
+  player.hp-=4;
+  player.exp+=r.exp; player.kokoro+=r.kokoro; player.gold=Math.max(0,player.gold+r.gold*GOLD_MULT);
+  player.warmth=Math.max(0,Math.min(100,player.warmth+r.warmth));
+  encCooldown=3;
+  const lines=[ (ok?'✦ ':'')+r.text ];
+  const gains=[]; if(r.exp)gains.push('けいけんち+'+r.exp); if(r.gold>0)gains.push(yen(r.gold*GOLD_MULT)); if(r.kokoro>0)gains.push('こころ+'+r.kokoro);
+  if(gains.length) lines.push(gains.join(' ／ '));
+  lines.push(...checkLevel());
+  say('', lines, ()=>{ if(player.hp<=0){ faint(); } save(); render(); });
+}
+function faint(){ say('', ['つかれて めを とじた……','ふと きづくと、谷の キャンプ場に もどっていた。'], ()=>{ player.x=MAP.start.x; player.y=MAP.start.y; player.hp=hpMax(); player.warmth=Math.max(player.warmth,50); render(); }); }
+
+/* ---- level ---- */
+function checkLevel(){
+  const msgs=[];
+  while(player.exp>=expNext()){ player.exp-=expNext(); player.lv++; player.hp=hpMax();
+    msgs.push(STORY.systemCopy.levelUp.replace('{lv}',player.lv));
+    SKILLS.filter(s=>s.learnLv===player.lv).forEach(s=>{ if(!player.skills.includes(s.id)){ player.skills.push(s.id); msgs.push('あたらしいスキル「'+s.name+'」を おぼえた！'); } });
+  }
+  return msgs;
+}
+
+/* ---- panels: inventory / shop / status / skill ---- */
+function openPanel(mode){ panelMode=mode; state='panel'; renderPanel(); }
+function openShop(){ panelMode='shop'; state='panel'; renderPanel(); }
+function closePanel(){ document.getElementById('panel').style.display='none'; state='play'; render(); }
+function rakuten(kw){ return 'https://search.rakuten.co.jp/search/mall/'+encodeURIComponent(kw)+'/'; }
+function bonusStr(b){ const m={warmth:'ぬくもり',kokoro:'こころ',skill_fire:'火',skill_cook:'料理',skill_weather:'天気',maxhp:'体力'};
+  return Object.keys(b).filter(k=>b[k]).map(k=>m[k]+'+'+b[k]).join(' '); }
+function renderPanel(){
+  const el=document.getElementById('panel'); el.style.display='block'; let h='';
+  if(panelMode==='shop'){
+    h+='<h3>どうぐや「まきと炎」　'+yen(player.gold)+'</h3>';
+    GEAR.forEach(g=>{ const own=player.owned.includes(g.id);
+      h+='<div class="row"><div class="nm">'+g.name+'<div class="fl">'+g.flavor+'<br>'+bonusStr(g.bonus)+'</div></div>'+
+         '<span class="pr">'+yen(g.price)+'</span>'+
+         (own?'<button disabled>しょゆうずみ</button>':'<button data-buy="'+g.id+'">かう</button>')+
+         '<a class="rk" href="'+rakuten(g.rakutenKeyword)+'" target="_blank" rel="nofollow sponsored noopener">楽天</a></div>'; });
+  } else if(panelMode==='inv'){
+    h+='<h3>そうび・もちもの</h3>';
+    ['tent','sleep','fire','cook','light','chair'].forEach(slot=>{
+      const owned=player.owned.map(gearById).filter(g=>g&&g.slot===slot);
+      if(!owned.length) return;
+      h+='<div class="slotlbl">'+({tent:'テント',sleep:'シュラフ',fire:'焚き火',cook:'調理',light:'照明',chair:'チェア'}[slot])+'</div>';
+      owned.forEach(g=>{ const eq=player.equip[slot]===g.id;
+        h+='<div class="row"><div class="nm">'+g.name+'<div class="fl">'+bonusStr(g.bonus)+'</div></div>'+
+           (eq?'<span class="equipped">そうび中</span>':'<button data-eq="'+g.id+'">そうび</button>')+'</div>'; });
+    });
+  } else if(panelMode==='status'){
+    h+='<h3>つよさ　'+player.shougou+'</h3>';
+    h+='<div class="row"><div class="nm">レベル</div><b>'+player.lv+'</b></div>';
+    h+='<div class="row"><div class="nm">けいけんち（つぎまで）</div><b>'+(expNext()-player.exp)+'</b></div>';
+    h+='<div class="row"><div class="nm">体力</div><b>'+player.hp+' / '+hpMax()+'</b></div>';
+    h+='<div class="row"><div class="nm">ぬくもり</div><b>'+Math.round(player.warmth)+'</b></div>';
+    h+='<div class="row"><div class="nm">こころ（満足度）</div><b>'+player.kokoro+'</b></div>';
+    h+='<div class="row"><div class="nm">しょじきん</div><b>'+yen(player.gold)+'</b></div>';
+    h+='<div class="slotlbl">のうりょく</div>';
+    [['skill_fire','火おこし'],['skill_cook','料理'],['skill_weather','天気'],['warmth','ぬくもり'],['luck','うん']].forEach(([s,l])=>{
+      h+='<div class="row"><div class="nm">'+l+'</div><b>'+statVal(s)+'</b></div>'; });
+  } else if(panelMode==='skill'){
+    h+='<h3>おぼえた スキル</h3>';
+    if(!player.skills.length) h+='<div class="row"><div class="nm fl">まだ なにも おぼえていない。レベルを あげよう。</div></div>';
+    player.skills.map(skillById).forEach(s=>{ h+='<div class="row"><div class="nm">'+s.name+'<div class="fl">'+s.desc+'</div></div><b>'+statLabel(s.stat)+'+'+s.power+'</b></div>'; });
+    h+='<div class="slotlbl">これから おぼえる</div>';
+    SKILLS.filter(s=>!player.skills.includes(s.id)).forEach(s=>{ h+='<div class="row"><div class="nm fl">Lv'+s.learnLv+'：'+s.name+'</div></div>'; });
+  }
+  h+='<button class="close" data-close="1">とじる（B）</button>';
+  el.innerHTML=h;
+  el.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>buy(b.getAttribute('data-buy')));
+  el.querySelectorAll('[data-eq]').forEach(b=>b.onclick=()=>{ equip(b.getAttribute('data-eq')); renderPanel(); });
+  el.querySelector('[data-close]').onclick=closePanel;
+}
+function buy(id){ const g=gearById(id); if(!g||player.owned.includes(id)||player.gold<g.price) return;
+  player.gold-=g.price; player.owned.push(id);
+  if(!player.equip[g.slot]) player.equip[g.slot]=id;
+  player.hp=Math.min(player.hp,hpMax()); save(); renderPanel(); }
+function equip(id){ const g=gearById(id); if(!g) return; player.equip[g.slot]=id; player.hp=Math.min(hpMax(),Math.max(player.hp,1)); save(); }
+
+/* ---- ending ---- */
+function showEnding(){
+  state='ending';
+  document.getElementById('e-stats').innerHTML='称号「'+player.shougou+'」<br>Lv '+player.lv+' ／ こころ（満足度）'+player.kokoro+' ／ '+yen(player.gold)+'<br>のんびり谷の あさを、みとどけた。';
+  document.getElementById('ending').style.display='flex';
+}
+
+/* ---- save/load ---- */
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(player)); }catch(e){} }
+function hasSave(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
+function load(){ try{ const p=JSON.parse(localStorage.getItem(SAVE_KEY)); if(p){ player=p; return true; } }catch(e){} return false; }
+
+/* ============ INPUT ============ */
+window.addEventListener('keydown',e=>{
+  const k=e.key;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(k)) e.preventDefault();
+  if(state==='title'||state==='ending') return;
+  if(state==='play'){
+    if(k==='ArrowUp'||k==='w')move('up'); else if(k==='ArrowDown'||k==='s')move('down');
+    else if(k==='ArrowLeft'||k==='a')move('left'); else if(k==='ArrowRight'||k==='d')move('right');
+    else if(k==='Enter'||k==='z'||k==='Z'||k===' ')action(); else if(k==='Escape'||k==='x'||k==='X')cancel();
+  } else if(state==='menu'){
+    if(k==='ArrowUp')moveCmd(-1,0); else if(k==='ArrowDown')moveCmd(1,0);
+    else if(k==='ArrowLeft')moveCmd(0,-1); else if(k==='ArrowRight')moveCmd(0,1);
+    else if(k==='Enter'||k==='z'||k==='Z'||k===' ')chooseCmd(); else if(k==='Escape'||k==='x'||k==='X')closeCmd();
+  } else if(state==='encounter'){
+    if(k==='ArrowUp')moveEnc(-1); else if(k==='ArrowDown')moveEnc(1);
+    else if(k==='Enter'||k==='z'||k==='Z'||k===' ')chooseEnc();
+  } else if(state==='dialog'){
+    if(k==='Enter'||k==='z'||k==='Z'||k===' ')advanceDialog();
+  } else if(state==='panel'){
+    if(k==='Escape'||k==='x'||k==='X'||k==='Enter')closePanel();
+  }
+});
+document.querySelectorAll('.dpad button[data-dir]').forEach(b=>{
+  const dir=b.getAttribute('data-dir');
+  b.addEventListener('pointerdown',e=>{ e.preventDefault();
+    if(state==='play')move(dir); else if(state==='menu'){ if(dir==='up')moveCmd(-1,0); else if(dir==='down')moveCmd(1,0); else if(dir==='left')moveCmd(0,-1); else moveCmd(0,1);}
+    else if(state==='encounter'){ if(dir==='up')moveEnc(-1); else if(dir==='down')moveEnc(1);} });
+});
+document.getElementById('btn-a').addEventListener('pointerdown',e=>{e.preventDefault();action();});
+document.getElementById('btn-b').addEventListener('pointerdown',e=>{e.preventDefault();cancel();});
+
+/* ============ BOOT ============ */
+function startGame(fresh){
+  MAP=genMap();
+  if(fresh){ const {p,inherited}=newPlayer(); player=p; player.x=MAP.start.x; player.y=MAP.start.y;
+    document.getElementById('title').style.display='none'; state='play'; render(); save();
+    const intro=[STORY.title.intro]; if(inherited) intro.push('（沼度診断の けっか「'+inherited.tier+'」を ひきつぎ、称号「'+inherited.shougou+'」で はじまる）');
+    say('', intro, ()=>{ say(NPC.guide.name, NPC.guide.lines); });
+  } else {
+    load(); if(player.x==null){player.x=MAP.start.x;player.y=MAP.start.y;}
+    document.getElementById('title').style.display='none'; state='play'; render();
+  }
+}
+function initTitle(){
+  document.getElementById('t-name').textContent=STORY.title.name;
+  document.getElementById('t-sub').textContent=STORY.title.subtitle;
+  if(hasSave()) document.getElementById('btn-continue').style.display='inline-block';
+  let tip='';
+  try{ const s=JSON.parse(localStorage.getItem('camp_numado_v1')); if(s&&s.snapshots&&s.snapshots.length){ tip='前回の沼度診断「'+(s.snapshots[s.snapshots.length-1].tier||'')+'」を 称号として ひきつげます'; } }catch(e){}
+  document.getElementById('t-tier').textContent=tip;
+}
+document.getElementById('btn-new').onclick=()=>startGame(true);
+document.getElementById('btn-continue').onclick=()=>startGame(false);
+document.getElementById('e-cont').onclick=()=>{ document.getElementById('ending').style.display='none'; state='play'; render(); };
+document.getElementById('e-share').onclick=()=>{ const t='『'+STORY.title.name+'』であさの けしきを みとどけた。称号「'+player.shougou+'」こころ満足度'+player.kokoro+'！ #キャンプクエスト #きぼうキャンプラボ';
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(t),'_blank','noopener'); };
+initTitle();
+</script>
+</body>
+</html>

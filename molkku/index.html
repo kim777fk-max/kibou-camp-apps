@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>キャンプモルック | きぼうキャンプラボ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#10140c;color:#f3efe4;font-family:'DotGothic16',monospace;}
+  body{background:radial-gradient(900px 400px at 50% -10%,rgba(120,180,90,.12),transparent 60%),#10140c;min-height:100vh;}
+  #app{max-width:440px;margin:0 auto;padding:8px 8px 16px;}
+  .scorebar{display:flex;gap:8px;align-items:stretch;margin-bottom:8px;}
+  .sc{flex:1;background:#1c2417;border:1px solid #3a4a2a;border-radius:12px;padding:8px 10px;text-align:center;position:relative;}
+  .sc.turn{border-color:#ffb24a;box-shadow:0 0 0 2px rgba(255,178,74,.25);}
+  .sc .who{font-size:12px;color:#a7b89a;}
+  .sc .pt{font-size:30px;font-weight:400;line-height:1.1;color:#fff;}
+  .sc .pt small{font-size:13px;color:#7e8e72}
+  .sc .dots{font-size:11px;color:#e2624a;height:14px;}
+  .vs{display:flex;align-items:center;color:#7e8e72;font-size:12px;}
+  .field-wrap{position:relative;width:100%;aspect-ratio:480/720;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.5);}
+  canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;}
+  .toast{position:absolute;left:10px;right:10px;top:10px;background:rgba(14,20,8,.86);border:1px solid #4a5a32;border-radius:10px;
+    padding:8px 12px;font-size:14px;text-align:center;z-index:4;min-height:38px;display:flex;align-items:center;justify-content:center;}
+  .toast b{color:#ffd166}
+  .tapcue{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#ffe;z-index:4;font-size:13px;
+    text-shadow:0 1px 4px #000;animation:bl 1s steps(2) infinite;}
+  @keyframes bl{50%{opacity:.35}}
+  .bottom{display:flex;gap:8px;margin-top:10px;}
+  .btn{flex:1;font-family:inherit;background:#23311a;border:1px solid #4a5a32;color:#e9f0df;border-radius:10px;padding:11px;font-size:14px;cursor:pointer;}
+  .btn:active{background:#2e3f20}
+  .btn.pri{background:#c4561f;border-color:#ffb24a;color:#fff}
+  .hint{text-align:center;color:#5e6b4e;font-size:11px;margin-top:9px;line-height:1.6}
+
+  .modal{position:absolute;inset:0;z-index:20;background:rgba(6,10,4,.86);display:flex;align-items:center;justify-content:center;padding:14px;}
+  .card{background:#1b2415;border:2px solid #5a6f3a;border-radius:14px;padding:16px;max-width:380px;width:100%;max-height:92%;overflow:auto;}
+  .card h2{margin:0 0 6px;font-size:19px;font-weight:400;color:#ffce8a;}
+  .card p{font-size:13px;line-height:1.7;color:#dfe7d2;margin:6px 0}
+  .card ol,.card ul{font-size:13px;line-height:1.7;color:#dfe7d2;padding-left:1.2em;margin:6px 0}
+  .card .big{display:block;width:100%;margin-top:12px;background:#c4561f;border:1px solid #ffb24a;color:#fff;font-family:inherit;border-radius:10px;padding:11px;font-size:15px;cursor:pointer;}
+  .win h2{font-size:26px;color:#ffce8a}
+  .win .stat{font-size:15px;margin:10px 0;color:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="scorebar">
+    <div class="sc" id="sc-you"><div class="who">あなた</div><div class="pt"><span id="you-pt">0</span><small> /50</small></div><div class="dots" id="you-dots"></div></div>
+    <div class="vs">VS</div>
+    <div class="sc" id="sc-cpu"><div class="who" id="cpu-name">CPU</div><div class="pt"><span id="cpu-pt">0</span><small> /50</small></div><div class="dots" id="cpu-dots"></div></div>
+  </div>
+
+  <div class="field-wrap">
+    <canvas id="field" width="480" height="720"></canvas>
+    <div class="toast" id="toast">ピンの かたまりを ねらって、ドラッグで なげよう！</div>
+    <div class="tapcue" id="tapcue" style="display:none"></div>
+    <div class="modal" id="rules" style="display:none"><div class="card" id="rules-card"></div></div>
+    <div class="modal" id="setup" style="display:none"><div class="card" id="setup-card"></div></div>
+    <div class="modal" id="over" style="display:none"><div class="card win" id="over-card"></div></div>
+  </div>
+
+  <div class="bottom">
+    <button class="btn" id="btn-rules">ルール</button>
+    <button class="btn pri" id="btn-restart">あいてを えらぶ</button>
+  </div>
+  <div class="hint">「投げる人」から ねらい先へ ドラッグして はなす（とおくを ねらうほど つよく とぶ）。<br>ちょうど 50てんを めざそう。</div>
+</div>
+
+<script>
+/* ============ FLAVOR (workflow生成・差し替え可) ============ */
+let OPPONENTS=[
+ {id:'marshmallow_megu',label:'やさしい',name:'マシュマロめぐ',persona:'焚き火でマシュマロを焼きながら、ゆるーく投げる隣のサイトの常連さん。',accuracy:0.45,banter:{start:'やっほー、ゆるっと楽しもうね！',hit:'わ、入っちゃった！ラッキー！',miss:'あはは、コーヒー飲も…',win:'やったね、いい風が吹いてたみたい！',lose:'上手だね〜、また一緒にやろ！'}},
+ {id:'captain_genki',label:'ふつう',name:'キャプテンげんき',persona:'毎週末キャンプに来る世話好きの兄貴分、声は大きいが腕はほどほど。',accuracy:0.66,banter:{start:'よし、いっちょ勝負といくか！',hit:'ナイス、狙いどおり！',miss:'おっと、今のはノーカン…じゃないか',win:'ふっ、まだまだ負けられんな！',lose:'やられたー！お前、筋いいな！'}},
+ {id:'silent_taka',label:'つよい',name:'サイレント鷹',persona:'テントの隅で黙々とギアを磨く寡黙な達人、投げれば外さない。',accuracy:0.82,banter:{start:'…始めよう。',hit:'…こんなものだ。',miss:'…風か。次は外さない。',win:'…いい試合だった。',lose:'…見事。次は譲らない。'}}
+];
+let COMMENTS={"greatThrow":["ナイススキットル！まとめてドカン！","うわー、固まってるとこ一気に持ってった！","一網打尽！これは効くね〜","ごっそり倒した！ビールがうまい一投だ"],"niceSingle":["ピンポイントで一本！シブいねぇ","狙いすました単発、お見事！","そこを抜くか〜、いい目してる","一本だけキレイに、職人技だね"],"miss":["あちゃ〜、空振り！まあそんな日もある","おっと0点、焚き火でも見て落ち着こ","スカッと外したね、ドンマイドンマイ","うーん届かず…次いこ次"],"bust":["やっちゃった〜50超えで25に逆戻り！","あ〜行き過ぎ！25からやり直しだ","オーバーラン！欲張っちゃったね","バースト…キャンプあるある、気にしない"],"reach":["お、リーチだ！あと一押しで勝ち！","ゴールが見えてきた、ここで決めたい","残りわずか、ランタンに灯をともそう","勝利目前！落ち着いて狙っていこう"],"elimWarn":["ミス2連続…次外したら失格だよ！","おっと崖っぷち、あと1回が命取り","うわ警告ランプ、ここは確実に倒そ","2回連続ミス！次は気合い入れて〜"],"win":["勝利〜！乾杯しよ、おつかれさま！","やったね優勝！焚き火を囲んで祝杯だ","ビクトリー！見事なスキットルさばき","勝った勝った！今日の主役は君だ"],"lose":["惜しくも敗北…でもいい試合だったよ","今回は届かず、また次のキャンプでね","負けちゃった〜まあコーヒーでも飲も","残念！でも楽しかったしヨシとしよ"]};
+let HELP={"title":"モルックの遊び方","intro":"モルック(Mölkky)はフィンランド生まれの、木の棒を投げて数字ピンを倒す的当てゲームです。ルールがやさしく、子どもから大人までいっしょに楽しめます。","howToThrow":"投げる人の場所から、ねらいたい方向へ指でドラッグして、はなすと棒(モルック)が飛びます。遠くをねらうほど強く飛ぶので、ドラッグの長さで力をちょうせいしよう。","rules":["1から12までの数字が書かれたピンを、決まった形に立てて並べます。","投げた棒でピンを1本だけ倒したら、そのピンに書かれた『数字』がそのまま得点になります。","棒で2本以上のピンを倒したら、数字ではなく『倒した本数』が得点になります(たとえば3本倒したら3点)。","得点を足していき、合計がちょうど50点になることを目指します。","合計が50点を超えてしまったら、得点は25点に戻され、そこからやり直しになります。","倒れたピンは元に戻さず、止まった場所でそのまま立て直すので、回を重ねるほどピンがだんだん散らばっていきます。","1本も倒せない(0点)が3回続くと失格になります。"],"tips":["遠くにバラけたピンを1本だけねらえば、大きな数字をピンポイントで取れます。","50点に近づいたら、いまの合計から逆算して『ちょうど必要な数字』のピンだけを正確にねらいましょう(超えると25点に戻るので欲張りは禁物です)。","強く投げすぎると棒が転がって思わぬピンまで倒すことがあるので、力加減はドラッグの長さで丁寧に調整するのがコツです。"]};
+
+/* ============ ENGINE ============ */
+const W=480,H=720, RP=15, RM=12, FR=0.975, STOP=0.28, KNOCK=1.0, REST=0.45, MASS_M=2.4, MASS_P=1;
+const THROWER={x:W/2,y:H-56};
+const cv=document.getElementById('field'), ctx=cv.getContext('2d');
+const FORM=[ [200,[1,2]], [234,[3,10,4]], [268,[5,11,12,6]], [302,[7,9,8]] ];
+let pins=[], mol=null, you, cpu, turn='you', gstate='setup', aim=null, opp=OPPONENTS[1], lastComment='';
+
+function makePins(){
+  pins=[];
+  FORM.forEach(([y,nums])=>{ const n=nums.length; nums.forEach((num,i)=>{
+    const x=W/2 + (i-(n-1)/2)*32; pins.push({num,x,y,vx:0,vy:0,down:false}); }); });
+}
+function newGame(opponent){
+  opp=opponent; makePins(); mol=null;
+  you={score:0,miss:0}; cpu={score:0,miss:0}; turn='you'; gstate='aim'; aim=null; lastComment=opp.banter.start;
+  document.getElementById('cpu-name').textContent=opp.name;
+  updateHud(); toast('あなたの ばん。 かたまりを ねらって ドラッグ！'); setTap(''); render();
+}
+
+/* ---- physics ---- */
+function microstep(){
+  const ents=[mol,...pins].filter(Boolean);
+  ents.forEach(e=>{ e.x+=e.vx*0.5; e.y+=e.vy*0.5;
+    const r=e.rad||RP;
+    if(e.x<r){e.x=r;e.vx=Math.abs(e.vx)*0.3;} if(e.x>W-r){e.x=W-r;e.vx=-Math.abs(e.vx)*0.3;}
+    if(e.y<r){e.y=r;e.vy=Math.abs(e.vy)*0.3;} if(e.y>H-r){e.y=H-r;e.vy=-Math.abs(e.vy)*0.3;}
+  });
+  for(let i=0;i<ents.length;i++) for(let j=i+1;j<ents.length;j++) collide(ents[i],ents[j]);
+}
+function collide(a,b){
+  const ra=a.rad||RP, rb=b.rad||RP, dx=b.x-a.x, dy=b.y-a.y;
+  let d=Math.hypot(dx,dy); const min=ra+rb; if(d>=min||d===0) return;
+  const nx=dx/d, ny=dy/d, ma=a.mass||MASS_P, mb=b.mass||MASS_P;
+  const overlap=min-d, totInv=1/ma+1/mb;
+  a.x-=nx*overlap*(1/ma)/totInv; a.y-=ny*overlap*(1/ma)/totInv;
+  b.x+=nx*overlap*(1/mb)/totInv; b.y+=ny*overlap*(1/mb)/totInv;
+  const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+  if(rv<0){
+    if(a.num!==undefined && !a.down && Math.abs(rv)>KNOCK) a.down=true;
+    if(b.num!==undefined && !b.down && Math.abs(rv)>KNOCK) b.down=true;
+    const j=-(1+REST)*rv/totInv;
+    a.vx-=j*nx/ma; a.vy-=j*ny/ma; b.vx+=j*nx/mb; b.vy+=j*ny/mb;
+  }
+}
+function settle(){
+  const ents=[mol,...pins].filter(Boolean);
+  ents.forEach(e=>{ e.vx*=FR; e.vy*=FR; if(Math.hypot(e.vx,e.vy)<STOP){e.vx=0;e.vy=0;} });
+  return ents.every(e=>e.vx===0&&e.vy===0);
+}
+function throwMol(dirx,diry,speed){
+  mol={x:THROWER.x,y:THROWER.y,vx:dirx*speed,vy:diry*speed,rad:RM,mass:MASS_M};
+  pins.forEach(p=>p.down=false);
+  gstate='throwing';
+}
+
+/* ---- turn resolution ---- */
+function resolve(){
+  const downPins=pins.filter(p=>p.down);
+  const cnt=downPins.length;
+  let pts=0;
+  if(cnt===1) pts=downPins[0].num; else if(cnt>=2) pts=cnt;
+  const who=(turn==='you')?you:cpu;
+  let busted=false, reach=false, comment='';
+  if(pts===0){ who.miss++; }
+  else{ who.miss=0; const ns=who.score+pts;
+    if(ns>50){ who.score=25; busted=true; } else { who.score=ns; } }
+  pins.forEach(p=>p.down=false); mol=null;
+  updateHud();
+  // messages
+  const youTurn=(turn==='you');
+  if(pts===0){ comment=youTurn?pick(COMMENTS.miss):opp.banter.miss; }
+  else if(busted){ comment=pick(COMMENTS.bust); }
+  else if(cnt>=2){ comment=youTurn?pick(COMMENTS.greatThrow):opp.banter.hit; }
+  else { comment=youTurn?pick(COMMENTS.niceSingle):opp.banter.hit; }
+  const head=youTurn?'あなた':opp.name;
+  let res = (pts>0?('+'+pts+'てん'):'0てん');
+  if(busted) res+='（50こえ→25）';
+  toast('<b>'+head+'：'+res+'</b>　'+comment);
+  // win / lose
+  if(who.score===50){ gameOver(youTurn); return; }
+  if(who.miss>=3){ gameOver(!youTurn, true); return; }
+  // reach hint
+  if(who.score>=42 && who.score<50){ /* could note */ }
+  gstate='result';
+  setTap('タップで つづける ▶');
+}
+function nextTurn(){
+  turn=(turn==='you')?'cpu':'you';
+  updateHud();
+  if(turn==='cpu'){ gstate='cpuwait'; setTap(''); toast(opp.name+'の ばん…'); setTimeout(cpuThrow,650); }
+  else{ gstate='aim'; setTap(''); const r=(50-you.score); toast(r<=12?('リーチ気味！ 50まで あと '+r):'あなたの ばん。 ドラッグで なげよう'); }
+  render();
+}
+
+/* ---- CPU ---- */
+function cpuThrow(){
+  const needed=50-cpu.score;
+  let tx,ty;
+  let exact=null;
+  if(needed>=1&&needed<=12) exact=pins.find(p=>p.num===needed);
+  if(exact){ tx=exact.x; ty=exact.y; }
+  else { let sx=0,sy=0; pins.forEach(p=>{sx+=p.x;sy+=p.y;}); tx=sx/pins.length; ty=sy/pins.length; }
+  let ang=Math.atan2(ty-THROWER.y, tx-THROWER.x);
+  ang += (Math.random()*2-1)*(1-opp.accuracy)*0.32;
+  const dist=Math.hypot(tx-THROWER.x,ty-THROWER.y);
+  let speed=clamp(dist/39*1.22 + (exact?0:0.6), 4, 19);
+  speed *= (1+(Math.random()*2-1)*(1-opp.accuracy)*0.12);
+  throwMol(Math.cos(ang),Math.sin(ang),speed);
+}
+
+/* ---- helpers ---- */
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function dots(m){return m>=1?('●'.repeat(m)+'○'.repeat(Math.max(0,2-(3-Math.min(3,m))))):'';}
+function missDots(m){let s='';for(let i=0;i<3;i++)s+=(i<m?'✕':'·');return m>0?s:'';}
+function updateHud(){
+  document.getElementById('you-pt').textContent=you?you.score:0;
+  document.getElementById('cpu-pt').textContent=cpu?cpu.score:0;
+  document.getElementById('you-dots').textContent=you?missDots(you.miss):'';
+  document.getElementById('cpu-dots').textContent=cpu?missDots(cpu.miss):'';
+  document.getElementById('sc-you').classList.toggle('turn',turn==='you'&&gstate!=='setup');
+  document.getElementById('sc-cpu').classList.toggle('turn',turn==='cpu');
+}
+function toast(html){ document.getElementById('toast').innerHTML=html; }
+function setTap(t){ const el=document.getElementById('tapcue'); el.textContent=t; el.style.display=t?'block':'none'; }
+
+/* ---- render ---- */
+function render(){
+  ctx.fillStyle='#4f7a36'; ctx.fillRect(0,0,W,H);
+  for(let y=0;y<H;y+=24) for(let x=((y/24)%2)*24;x<W;x+=48){ ctx.fillStyle='rgba(0,0,0,.04)'; ctx.fillRect(x,y,24,24); }
+  // throw line
+  ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.setLineDash([8,8]); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(20,H-86); ctx.lineTo(W-20,H-86); ctx.stroke(); ctx.setLineDash([]);
+  // thrower
+  ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(THROWER.x,THROWER.y+10,12,4,0,0,7); ctx.fill();
+  ctx.fillStyle='#d8503a'; ctx.fillRect(THROWER.x-7,THROWER.y-6,14,12);
+  ctx.fillStyle='#f0c9a8'; ctx.beginPath(); ctx.arc(THROWER.x,THROWER.y-10,6,0,7); ctx.fill();
+  // aim arrow
+  if(aim && gstate==='aim'){
+    const dx=aim.x-THROWER.x, dy=aim.y-THROWER.y, d=Math.hypot(dx,dy)||1; const nx=dx/d, ny=dy/d;
+    const pw=clamp(d/(H*0.62),0,1);
+    ctx.strokeStyle='rgba(255,230,120,.9)'; ctx.lineWidth=4; ctx.setLineDash([6,6]);
+    ctx.beginPath(); ctx.moveTo(THROWER.x,THROWER.y); ctx.lineTo(aim.x,aim.y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,230,120,.95)'; ctx.beginPath(); ctx.arc(aim.x,aim.y,6,0,7); ctx.fill();
+    // power bar
+    ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fillRect(THROWER.x-40,THROWER.y+18,80,8);
+    ctx.fillStyle=pw>0.85?'#ff5a5a':'#ffd166'; ctx.fillRect(THROWER.x-40,THROWER.y+18,80*pw,8);
+  }
+  // pins
+  pins.forEach(p=>{
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(p.x,p.y+RP-2,RP*0.8,3,0,0,7); ctx.fill();
+    if(p.down){ ctx.fillStyle='#b89466'; ctx.beginPath(); ctx.ellipse(p.x,p.y,RP*1.1,RP*0.55,0,0,7); ctx.fill();
+      ctx.fillStyle='#7a5a32'; ctx.font='bold 12px DotGothic16,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.num,p.x,p.y);
+    } else {
+      ctx.fillStyle='#e6c590'; ctx.beginPath(); ctx.arc(p.x,p.y,RP,0,7); ctx.fill();
+      ctx.strokeStyle='#a07a3a'; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle='#5a3f18'; ctx.font='bold 15px DotGothic16,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.num,p.x,p.y);
+    }
+  });
+  // molkky
+  if(mol){ ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(mol.x,mol.y+4,RM,4,0,0,7); ctx.fill();
+    ctx.fillStyle='#c98a3a'; ctx.beginPath(); ctx.arc(mol.x,mol.y,RM,0,7); ctx.fill(); ctx.strokeStyle='#7a531f'; ctx.lineWidth=2; ctx.stroke(); }
+}
+
+/* ---- loop ---- */
+function loop(){
+  if(gstate==='throwing'){
+    for(let k=0;k<2;k++) microstep();
+    const done=settle();
+    render();
+    if(done){ resolve(); }
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---- input ---- */
+function canvasPos(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX); const cy=(e.touches?e.touches[0].clientY:e.clientY);
+  return {x:(cx-r.left)/r.width*W, y:(cy-r.top)/r.height*H}; }
+let dragging=false;
+function down(e){ e.preventDefault();
+  if(gstate==='result'){ nextTurn(); return; }
+  if(gstate!=='aim') return;
+  dragging=true; aim=canvasPos(e); render();
+}
+function moveP(e){ if(!dragging||gstate!=='aim')return; e.preventDefault(); aim=canvasPos(e); render(); }
+function up(e){ if(!dragging)return; dragging=false;
+  if(gstate!=='aim'){return;}
+  const dx=aim.x-THROWER.x, dy=aim.y-THROWER.y, d=Math.hypot(dx,dy);
+  if(d<24){ aim=null; render(); return; }
+  const nx=dx/d, ny=dy/d;
+  let speed=clamp(d/39*1.2,4,19);
+  const wob=(Math.random()*2-1)*0.025;  // ほんの少しのブレ
+  const ca=Math.cos(wob),sa=Math.sin(wob);
+  throwMol(nx*ca-ny*sa, nx*sa+ny*ca, speed);
+  aim=null; toast('えいっ！');
+}
+cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',moveP); window.addEventListener('mouseup',up);
+cv.addEventListener('touchstart',down,{passive:false}); cv.addEventListener('touchmove',moveP,{passive:false}); cv.addEventListener('touchend',up);
+
+/* ---- over / setup ---- */
+function gameOver(youWin, byElim){
+  gstate='over';
+  const c=document.getElementById('over-card');
+  const msg=youWin?pick(COMMENTS.win):pick(COMMENTS.lose);
+  const banter=youWin?opp.banter.lose:opp.banter.win;
+  c.innerHTML='<h2>'+(youWin?'🏆 あなたの かち！':'くやしい… まけ')+'</h2>'+
+    '<div class="stat">あなた '+you.score+' てん ／ '+opp.name+' '+cpu.score+' てん'+(byElim?'<br>（3連続ミスで しっかく）':'')+'</div>'+
+    '<p>'+msg+'<br>'+opp.name+'：'+banter+'</p>'+
+    '<button class="big" id="ov-share">𝕏 で けっかを シェア</button>'+
+    '<button class="big" id="ov-again" style="background:#23311a;border-color:#5a6f3a">もう いっかい</button>';
+  document.getElementById('over').style.display='flex';
+  document.getElementById('ov-again').onclick=()=>{ document.getElementById('over').style.display='none'; openSetup(); };
+  document.getElementById('ov-share').onclick=()=>{ const t=(youWin?'キャンプモルックで '+opp.name+'に かった！ ':'キャンプモルックで '+opp.name+'に まけた…！ ')+'#キャンプモルック #きぼうキャンプラボ';
+    window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(t),'_blank','noopener'); };
+}
+function openSetup(){
+  gstate='setup'; updateHud();
+  const c=document.getElementById('setup-card');
+  c.innerHTML='<h2>あいてを えらぶ</h2>'+OPPONENTS.map(o=>
+    '<button class="big" data-op="'+o.id+'" style="text-align:left;background:#23311a;border-color:#5a6f3a;margin-top:10px">'+
+    '<b style="color:#ffd166">'+o.label+'</b>　'+o.name+'<br><span style="font-size:12px;color:#a7b89a">'+o.persona+'</span></button>').join('');
+  document.getElementById('setup').style.display='flex';
+  c.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>{ document.getElementById('setup').style.display='none';
+    newGame(OPPONENTS.find(o=>o.id===b.getAttribute('data-op'))); });
+}
+function openRules(){
+  const c=document.getElementById('rules-card');
+  c.innerHTML='<h2>'+HELP.title+'</h2><p>'+HELP.intro+'</p><p><b style="color:#ffce8a">なげかた</b><br>'+HELP.howToThrow+'</p>'+
+    '<p><b style="color:#ffce8a">ルール</b></p><ol>'+HELP.rules.map(r=>'<li>'+r+'</li>').join('')+'</ol>'+
+    '<p><b style="color:#ffce8a">コツ</b></p><ul>'+HELP.tips.map(t=>'<li>'+t+'</li>').join('')+'</ul>'+
+    '<button class="big" id="rules-close">とじる</button>';
+  document.getElementById('rules').style.display='flex';
+  document.getElementById('rules-close').onclick=()=>{ document.getElementById('rules').style.display='none'; };
+}
+document.getElementById('btn-rules').onclick=openRules;
+document.getElementById('btn-restart').onclick=openSetup;
+
+/* ---- boot ---- */
+makePins(); render(); openSetup(); loop();
+</script>
+</body>
+</html>
