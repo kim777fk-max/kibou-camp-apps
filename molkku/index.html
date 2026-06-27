@@ -182,6 +182,37 @@ function setTap(t){ const e=document.getElementById('tapcue'); e.textContent=t; 
 function showWind(){ const e=document.getElementById('wind'); if(!lv.wind){e.style.display='none';return;}
   const dir=windX<0?'◀ 風':'風 ▶'; const n=Math.round(Math.abs(windX)/0.04*3); e.textContent=dir+' '+'›'.repeat(Math.max(1,n)); e.style.display='block'; }
 
+/* ============ CHARACTER SPRITES (SVG → canvas) ============ */
+function camperSVG(c){return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="132" viewBox="0 0 100 132">
+<rect x="40" y="80" width="9" height="33" rx="4" fill="${c.pants}"/>
+<rect x="51" y="80" width="9" height="33" rx="4" fill="${c.pants}"/>
+<rect x="37" y="109" width="14" height="15" rx="5" fill="${c.boots}"/>
+<rect x="49" y="109" width="14" height="15" rx="5" fill="${c.boots}"/>
+<rect x="25" y="55" width="9" height="31" rx="4.5" fill="${c.jacket}"/>
+<circle cx="29.5" cy="86" r="5" fill="${c.skin}"/>
+<rect x="31" y="51" width="38" height="37" rx="10" fill="${c.jacket}"/>
+<rect x="37" y="55" width="26" height="41" rx="7" fill="${c.pack}"/>
+<rect x="37" y="55" width="26" height="14" rx="6" fill="${c.packFlap}"/>
+<ellipse cx="50" cy="54" rx="15" ry="6" fill="${c.packFlap}"/>
+<rect x="40" y="47" width="4" height="22" rx="2" fill="${c.packFlap}"/>
+<rect x="56" y="47" width="4" height="22" rx="2" fill="${c.packFlap}"/>
+<g transform="rotate(38 65 58)">
+<rect x="61" y="26" width="9" height="34" rx="4.5" fill="${c.jacket}"/>
+<rect x="60.5" y="12" width="10" height="17" rx="4" fill="${c.baton}"/>
+<rect x="61.5" y="13" width="3" height="15" rx="1.5" fill="rgba(0,0,0,.12)"/>
+<circle cx="65.5" cy="27" r="5.5" fill="${c.skin}"/>
+</g>
+<circle cx="50" cy="40" r="12.5" fill="${c.hair}"/>
+<path d="M36.5 41 a13.5 13.5 0 0 1 27 0 z" fill="${c.beanie}"/>
+<rect x="35.5" y="37" width="29" height="7.5" rx="3.7" fill="${c.beanie}"/>
+<circle cx="50" cy="25.5" r="4.2" fill="${c.pom}"/>
+</svg>`;}
+const COL_YOU={pants:'#3a4458',boots:'#6b4a2b',jacket:'#caa23a',pack:'#2f9e8f',packFlap:'#23806f',skin:'#f0c9a8',hair:'#4a3526',beanie:'#e0552e',pom:'#ffe3b0',baton:'#caa15a'};
+const COL_CPU={pants:'#33405a',boots:'#5a4631',jacket:'#7f8a96',pack:'#e0772e',packFlap:'#b85e1f',skin:'#ead0b8',hair:'#33323c',beanie:'#3f6fae',pom:'#dbe8f7',baton:'#caa15a'};
+const sprites={};
+function loadSprite(key,c){ const img=new Image(); img.onload=()=>{ sprites[key]=img; if(gstate!=='select') render(); }; img.src='data:image/svg+xml;charset=utf8,'+encodeURIComponent(camperSVG(c)); }
+loadSprite('you',COL_YOU); loadSprite('cpu',COL_CPU);
+
 /* ============ RENDER ============ */
 function drawBackground(){
   const t=lv.theme;
@@ -220,10 +251,11 @@ function drawPin(p){
   ctx.strokeStyle='#a07a3a'; ctx.lineWidth=Math.max(1,2*s); ctx.stroke();
   ctx.fillStyle='#5a3f18'; ctx.font='bold '+Math.max(9,17*s)+'px DotGothic16,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.num,pr.sx,pr.sy-ph*s*0.5);
 }
-function drawThrower(){ const pr=proj(THROWER.x,THROWER.d,0), s=pr.s;
-  ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(pr.sx,pr.sy,14*s,5*s,0,0,7); ctx.fill();
-  ctx.fillStyle='#d8503a'; ctx.fillRect(pr.sx-9*s,pr.sy-26*s,18*s,20*s);
-  ctx.fillStyle='#f0c9a8'; ctx.beginPath(); ctx.arc(pr.sx,pr.sy-30*s,8*s,0,7); ctx.fill(); }
+function drawThrower(){ const pr=proj(THROWER.x,THROWER.d,0);
+  ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(pr.sx,pr.sy+3,30,9,0,0,7); ctx.fill();
+  const img=sprites[turn==='cpu'?'cpu':'you'];
+  if(img){ const h=108, w=h*100/132; ctx.drawImage(img, pr.sx-w/2, pr.sy+7-h, w, h); }
+  else { ctx.fillStyle='#d8503a'; ctx.fillRect(pr.sx-12,pr.sy-28,24,26); ctx.fillStyle='#f0c9a8'; ctx.beginPath(); ctx.arc(pr.sx,pr.sy-32,8,0,7); ctx.fill(); } }
 function render(){
   drawBackground(); drawThrower();
   if(aimPt && gstate==='aim'){ const pr=proj(aimPt.x,aimPt.d,0), s=pr.s;
