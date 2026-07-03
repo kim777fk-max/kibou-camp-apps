@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>車載テトリス地獄 🚗 | きぼうキャンプラボ</title>
+<meta name="description" content="キャンプ道具を車に詰め込むパッキングパズル。重い物は下、壊れ物を潰すな、濡れ物は寝袋から離せ。あなたの積載IQは？">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Maru+Gothic:wght@500;700&display=swap');
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#0e1116;color:#eef2f7;font-family:'Zen Maru Gothic',system-ui,sans-serif;}
+  body{min-height:100vh;background:radial-gradient(700px 380px at 50% -8%,rgba(90,140,220,.12),transparent 60%),#0e1116;}
+  #app{max-width:440px;margin:0 auto;padding:12px 12px 26px;}
+  header{text-align:center;margin-bottom:6px;}
+  .badge{display:inline-block;font-size:11px;letter-spacing:.08em;color:#8fb4e6;border:1px solid #2c3644;border-radius:999px;padding:4px 12px;}
+  h1{font-family:'DotGothic16',monospace;font-size:clamp(22px,6.5vw,30px);margin:10px 0 2px;
+    background:linear-gradient(120deg,#cfe0ff,#7fa8e6,#5b83c4);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .cond{font-size:12.5px;color:#9fb0c4;min-height:18px;}
+  .cond b{color:#ffd166}
+  .legend{display:flex;flex-wrap:wrap;gap:5px 9px;justify-content:center;font-size:11px;color:#9fb0c4;margin:6px 0 8px;}
+  .legend span{white-space:nowrap}
+  .stage{position:relative;width:100%;display:flex;justify-content:center;}
+  canvas{touch-action:none;border-radius:10px;background:#161b22;}
+  .tray{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:10px;min-height:10px;}
+  .chip{display:flex;align-items:center;gap:5px;background:#1b2230;border:1.5px solid #2f3a4a;border-radius:10px;
+    padding:6px 9px;font-size:12.5px;cursor:pointer;transition:.12s;}
+  .chip:active{transform:scale(.96)}
+  .chip.sel{border-color:#ffb24a;background:#2a2418;box-shadow:0 0 0 2px rgba(255,178,74,.25)}
+  .chip .ce{font-size:16px}
+  .chip .cb{font-size:10px;color:#9fb0c4;margin-left:2px}
+  .controls{display:flex;gap:8px;margin-top:12px;}
+  .btn{flex:1;font-family:inherit;font-weight:700;border:none;border-radius:12px;padding:13px;font-size:15px;cursor:pointer;
+    color:#eef2f7;background:#22303f;border:1px solid #38485c;}
+  .btn:active{transform:scale(.98)}
+  .btn.rot{flex:0 0 84px;background:#2a3342}
+  .btn.pri{background:linear-gradient(120deg,#5b83c4,#3f66a8);border:none;color:#fff}
+  .btn:disabled{opacity:.4}
+  .hint{text-align:center;color:#68788c;font-size:11px;margin-top:9px;line-height:1.6}
+
+  .modal{position:fixed;inset:0;z-index:30;background:rgba(6,10,16,.9);display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto;}
+  .card{background:#161c26;border:2px solid #38485c;border-radius:16px;padding:18px;max-width:400px;width:100%;max-height:94vh;overflow:auto;}
+  .card h2{margin:0;font-size:19px;font-weight:400;color:#cfe0ff;text-align:center}
+  .iq{font-family:'DotGothic16',monospace;font-size:58px;text-align:center;line-height:1.1;margin:4px 0;}
+  .iqlabel{text-align:center;font-size:16px;font-weight:700;margin-bottom:10px}
+  .brk{font-size:13px;line-height:1.5;}
+  .brk .row{display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid #26303c;}
+  .brk .ic{font-size:20px;flex-shrink:0}
+  .brk .tx{flex:1;min-width:0}
+  .brk .tt{font-weight:700}
+  .brk .td{font-size:11.5px;color:#9fb0c4}
+  .brk .pt{font-size:12px;white-space:nowrap;font-weight:700}
+  .brk .pt.bad{color:#ff7a6a}.brk .pt.good{color:#7bd88f}
+  .brk a{margin-left:auto;font-size:11px;color:#ffd166;text-decoration:none;border:1px solid #5a4a2a;border-radius:8px;padding:5px 9px;white-space:nowrap;flex-shrink:0}
+  .card .big{display:block;width:100%;margin-top:12px;background:#3f66a8;border:none;color:#fff;font-family:inherit;font-weight:700;border-radius:12px;padding:12px;font-size:15px;cursor:pointer;}
+  .card .big.sub{background:#22303f;border:1px solid #38485c}
+  .pr-note{font-size:10.5px;color:#68788c;text-align:center;margin-top:8px}
+  .row2{display:flex;gap:8px}
+  .row2 .big{margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="badge">🏕️ きぼうキャンプラボ</span>
+    <h1>車載テトリス地獄</h1>
+    <div class="cond" id="cond"></div>
+  </header>
+  <div class="legend">
+    <span>⚖️重い＝下へ</span><span>💥壊れ物＝潰すな</span><span>💧濡れ＝寝袋に付けるな</span><span>⏱すぐ使う＝手前(上段)</span>
+  </div>
+  <div class="stage"><canvas id="grid" width="384" height="384"></canvas></div>
+  <div class="tray" id="tray"></div>
+  <div class="controls">
+    <button class="btn rot" id="rotate">↻ 回転</button>
+    <button class="btn pri" id="judge">積載を判定する</button>
+  </div>
+  <div class="hint">荷物をタップ→グリッドをドラッグして配置（置いた荷物はタップで取り出せる）。<br>「回転」で向きを変える。全部積んで<b style="color:#9fb0c4">積載IQ</b>を上げよう。</div>
+
+  <div class="modal" id="result" style="display:none"><div class="card" id="result-card"></div></div>
+  <div class="modal" id="rules" style="display:none"><div class="card" id="rules-card"></div></div>
+</div>
+
+<script>
+const SITE={url:'https://kim777fk-max.github.io/kibou-camp-apps/cartetris/'};
+const rakuten=kw=>'https://search.rakuten.co.jp/search/mall/'+encodeURIComponent(kw)+'/';
+
+/* ===== ギア（形＝セル座標オフセット・属性・楽天KW） ===== */
+// attrs: heavy 重い / fragile 壊れやすい / wet 濡れ / soft 布(寝袋等) / soon すぐ使う
+const GEAR={
+ cooler:{n:'クーラーボックス',e:'🧊',cells:[[0,0],[1,0],[0,1],[1,1]],attr:['heavy'],kw:'ハードクーラーボックス 保冷',col:'#4a7fb0'},
+ tent:{n:'テント',e:'⛺',cells:[[0,0],[1,0],[2,0]],attr:['heavy'],kw:'ワンポールテント',col:'#c0663a'},
+ fire:{n:'焚き火台',e:'🔥',cells:[[0,0],[1,0]],attr:['heavy'],kw:'焚き火台 二次燃焼',col:'#b04a2a'},
+ power:{n:'ポータブル電源',e:'🔋',cells:[[0,0],[0,1]],attr:['heavy'],kw:'ポータブル電源 キャンプ',col:'#3a7a5a'},
+ water:{n:'ウォータータンク',e:'💧',cells:[[0,0],[0,1]],attr:['heavy','wet'],kw:'折りたたみ ウォータータンク',col:'#3f8fb0'},
+ lantern:{n:'ランタン',e:'🏮',cells:[[0,0]],attr:['fragile','soon'],kw:'ガスランタン キャンプ',col:'#c9a23a'},
+ sleep:{n:'寝袋',e:'🛏️',cells:[[0,0],[0,1],[1,1]],attr:['soft'],kw:'ダウン シュラフ 3シーズン',col:'#9a6ab0'},
+ chair:{n:'チェア',e:'🪑',cells:[[0,0],[1,0],[2,0]],attr:['soon'],kw:'アウトドアチェア 折りたたみ',col:'#6a8a4a'},
+ table:{n:'テーブル',e:'🪵',cells:[[0,0],[1,0],[2,0]],attr:[],kw:'ロールテーブル キャンプ',col:'#8a6a3a'},
+ cook:{n:'クッカー箱',e:'🍳',cells:[[0,0],[1,0]],attr:[],kw:'クッカー セット キャンプ',col:'#7a7a7a'},
+ tarp:{n:'タープ',e:'🏕️',cells:[[0,0],[1,0]],attr:['soon'],kw:'TC タープ ポリコットン',col:'#b0894a'},
+ stove:{n:'ツーバーナー',e:'🔥',cells:[[0,0],[1,0],[0,1],[1,1]],attr:['heavy','fragile'],kw:'ツーバーナー コールマン',col:'#a05a3a'}
+};
+
+/* ===== 日替わり条件 ===== */
+const CONDS=[
+ {id:'normal',label:'通常キャンプ',emo:'🚗',W:6,H:6,items:['cooler','tent','fire','power','water','lantern','sleep','chair','table','cook'],note:'いつもの積載。全部きれいに詰めよう。'},
+ {id:'rain',label:'雨キャンプ',emo:'🌧️',W:6,H:6,items:['cooler','tent','fire','water','lantern','sleep','chair','tarp','cook','table'],note:'タープ追加。濡れ物(💧)を寝袋(🛏️)に近づけるな。'},
+ {id:'family',label:'ファミキャン（軽自動車）',emo:'👨‍👩‍👧',W:6,H:5,items:['cooler','tent','fire','power','lantern','sleep','chair','table'],note:'人が乗るぶん荷室が狭い(高さ−1)。詰みに注意。'}
+];
+function dstr(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function todayCond(){ const d=new Date(); const idx=(d.getFullYear()*372+d.getMonth()*31+d.getDate())%CONDS.length; return CONDS[idx]; }
+
+/* ===== state ===== */
+let COND, W, H, CELL=64, grid=[], placed={}, held=null, heldRot=0, ghost=null, dragging=false;
+const cv=document.getElementById('grid'), ctx=cv.getContext('2d');
+
+function rot90(cells){ // 90°回転して非負に正規化
+  let r=cells.map(([x,y])=>[-y,x]);
+  const mnx=Math.min(...r.map(c=>c[0])), mny=Math.min(...r.map(c=>c[1]));
+  return r.map(([x,y])=>[x-mnx,y-mny]);
+}
+function shapeOf(id,rot){ let c=GEAR[id].cells; for(let i=0;i<rot;i++) c=rot90(c); return c; }
+function bbox(cells){ return {w:Math.max(...cells.map(c=>c[0]))+1, h:Math.max(...cells.map(c=>c[1]))+1}; }
+
+function setup(cond){
+  COND=cond; W=cond.W; H=cond.H;
+  cv.width=W*CELL; cv.height=H*CELL;
+  grid=Array.from({length:H},()=>Array(W).fill(null));
+  placed={}; held=null; heldRot=0; ghost=null;
+  document.getElementById('cond').innerHTML=cond.emo+' <b>'+cond.label+'</b>　'+cond.note;
+  renderTray(); render();
+}
+function canPlace(id,rot,ox,oy){ const cells=shapeOf(id,rot);
+  for(const [dx,dy] of cells){ const x=ox+dx,y=oy+dy; if(x<0||y<0||x>=W||y>=H) return false; if(grid[y][x]&&grid[y][x]!==id) return false; }
+  return true;
+}
+function placeItem(id,rot,ox,oy){ if(!canPlace(id,rot,ox,oy)) return false;
+  removeItem(id);
+  shapeOf(id,rot).forEach(([dx,dy])=>{ grid[oy+dy][ox+dx]=id; });
+  placed[id]={rot,ox,oy}; return true;
+}
+function removeItem(id){ if(!placed[id]) return; for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(grid[y][x]===id) grid[y][x]=null; delete placed[id]; }
+
+/* ===== render ===== */
+function attrIcons(id){ return GEAR[id].attr.map(a=>({heavy:'⚖️',fragile:'💥',wet:'💧',soft:'🛏️',soon:'⏱'}[a])).join(''); }
+function drawCellItem(id,ox,oy,cells,alpha,tint){
+  const g=GEAR[id]; ctx.globalAlpha=alpha||1;
+  cells.forEach(([dx,dy])=>{ const x=(ox+dx)*CELL,y=(oy+dy)*CELL;
+    ctx.fillStyle=tint||g.col; ctx.fillRect(x+2,y+2,CELL-4,CELL-4);
+    ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=2; ctx.strokeRect(x+2,y+2,CELL-4,CELL-4);
+  });
+  // label on the shape's first cell
+  const [ax,ay]=cells[0]; const cx=(ox+ax)*CELL+CELL/2, cy=(oy+ay)*CELL+CELL/2;
+  ctx.globalAlpha=alpha||1; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='22px serif'; ctx.fillText(g.e,cx,cy-6);
+  ctx.font='bold 9px "Zen Maru Gothic",sans-serif'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText(attrIcons(id),cx,cy+13);
+  ctx.globalAlpha=1;
+}
+function render(){
+  ctx.fillStyle='#161b22'; ctx.fillRect(0,0,cv.width,cv.height);
+  // 底(重い物ゾーン)を薄く
+  ctx.fillStyle='rgba(90,140,220,.06)'; ctx.fillRect(0,(H-2)*CELL,W*CELL,2*CELL);
+  ctx.fillStyle='rgba(255,178,74,.05)'; ctx.fillRect(0,0,W*CELL,CELL);
+  // grid lines
+  ctx.strokeStyle='#232c38'; ctx.lineWidth=1;
+  for(let x=0;x<=W;x++){ ctx.beginPath(); ctx.moveTo(x*CELL,0); ctx.lineTo(x*CELL,H*CELL); ctx.stroke(); }
+  for(let y=0;y<=H;y++){ ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(W*CELL,y*CELL); ctx.stroke(); }
+  // side labels
+  ctx.fillStyle='rgba(255,178,74,.5)'; ctx.font='bold 11px "Zen Maru Gothic"'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText('↑手前(すぐ使う)',6,5);
+  ctx.fillStyle='rgba(120,170,240,.5)'; ctx.textBaseline='bottom'; ctx.fillText('↓底(重い物)',6,H*CELL-5);
+  // placed
+  for(const id in placed){ const p=placed[id]; drawCellItem(id,p.ox,p.oy,shapeOf(id,p.rot),1); }
+  // ghost
+  if(held && ghost){ const ok=canPlace(held,heldRot,ghost.ox,ghost.oy);
+    drawCellItem(held,ghost.ox,ghost.oy,shapeOf(held,heldRot),.55,ok?'#4a8f5a':'#8f3a3a'); }
+}
+function renderTray(){
+  const t=document.getElementById('tray'); t.innerHTML='';
+  COND.items.filter(id=>!placed[id]).forEach(id=>{ const g=GEAR[id];
+    const c=document.createElement('div'); c.className='chip'+(held===id?' sel':''); c.dataset.id=id;
+    c.innerHTML='<span class="ce">'+g.e+'</span>'+g.n+'<span class="cb">'+attrIcons(id)+'</span>';
+    c.onclick=()=>{ held=(held===id?null:id); heldRot=0; ghost=null; renderTray(); render(); };
+    t.appendChild(c);
+  });
+  if(!t.children.length) t.innerHTML='<span style="color:#7bd88f;font-size:13px">全部つみ込んだ！「積載を判定する」へ</span>';
+  document.getElementById('rotate').disabled=!held;
+}
+
+/* ===== input (drag place) ===== */
+function evCell(e){ const r=cv.getBoundingClientRect(); const cxp=(e.touches?e.touches[0].clientX:e.clientX), cyp=(e.touches?e.touches[0].clientY:e.clientY);
+  const x=Math.floor((cxp-r.left)/r.width*W), y=Math.floor((cyp-r.top)/r.height*H); return {x,y}; }
+function anchorFrom(id,rot,cx,cy){ // 形が指の下に来るよう左上寄せ（形の中心を指に）
+  const bb=bbox(shapeOf(id,rot)); return {ox:Math.max(0,Math.min(W-bb.w,cx-((bb.w-1)>>1))), oy:Math.max(0,Math.min(H-bb.h,cy-((bb.h-1)>>1)))}; }
+function down(e){ e.preventDefault(); const c=evCell(e); if(c.x<0||c.y<0||c.x>=W||c.y>=H) return;
+  if(!held){ const id=grid[c.y][c.x]; if(id){ heldRot=placed[id].rot; removeItem(id); held=id; renderTray(); } else return; }
+  dragging=true; ghost=anchorFrom(held,heldRot,c.x,c.y); render();
+}
+function move(e){ if(!dragging||!held) return; e.preventDefault(); const c=evCell(e); if(c.x<0||c.y<0)return; ghost=anchorFrom(held,heldRot,Math.max(0,Math.min(W-1,c.x)),Math.max(0,Math.min(H-1,c.y))); render(); }
+function up(e){ if(!dragging) return; dragging=false; if(!held||!ghost) return;
+  if(canPlace(held,heldRot,ghost.ox,ghost.oy)){ placeItem(held,heldRot,ghost.ox,ghost.oy); held=null; ghost=null; renderTray(); render(); }
+  else { render(); } // 置けない時はheldのまま
+}
+cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+cv.addEventListener('touchstart',down,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); cv.addEventListener('touchend',up);
+document.getElementById('rotate').onclick=()=>{ if(!held)return; heldRot=(heldRot+1)%4; if(ghost){ const bb=bbox(shapeOf(held,heldRot)); ghost.ox=Math.min(ghost.ox,W-bb.w); ghost.oy=Math.min(ghost.oy,H-bb.h);} render(); };
+
+/* ===== 判定（積載IQ） ===== */
+function cellsAbove(id){ // そのアイテムの各セルの真上(同列で上)にあるセル
+  const out=[]; for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(grid[y][x]===id) out.push([x,y]); return out; }
+function judge(){
+  const issues=[]; let score=100;
+  const unplaced=COND.items.filter(id=>!placed[id]);
+  // ① 積みきれない
+  if(unplaced.length){ const pen=unplaced.length*22; score-=pen;
+    issues.push({ic:'🚗',tt:'積みきれてない ('+unplaced.length+'点)',td:unplaced.map(i=>GEAR[i].n).join('・')+' が車内に入らなかった。',pt:-pen,kw:'ルーフボックス 車 大容量'}); }
+  // ② 重い物が下段にない（下2段=底）
+  let heavyHigh=[]; for(const id in placed){ if(GEAR[id].attr.includes('heavy')){ const cells=cellsAbove(id); const minY=Math.min(...cells.map(c=>c[1])); if(minY < H-3) heavyHigh.push(id); } }
+  if(heavyHigh.length){ const pen=heavyHigh.length*8; score-=pen;
+    issues.push({ic:'⚖️',tt:'重心が高い ('+heavyHigh.length+'点)',td:heavyHigh.map(i=>GEAR[i].n).join('・')+' が上の方。重い物は底へ。',pt:-pen,kw:'収納ボックス アウトドア 頑丈 スタッキング'}); }
+  // ③ 壊れ物が重い物に潰される（fragileの真上に heavy のセル）
+  let crushed=[]; for(const id in placed){ if(!GEAR[id].attr.includes('fragile'))continue;
+    const cells=cellsAbove(id); let bad=false;
+    cells.forEach(([x,y])=>{ for(let yy=y-1;yy>=0;yy--){ const o=grid[yy][x]; if(o&&GEAR[o].attr.includes('heavy')) bad=true; } });
+    if(bad) crushed.push(id); }
+  if(crushed.length){ const pen=crushed.length*14; score-=pen;
+    issues.push({ic:'💥',tt:'壊れ物が潰されそう',td:crushed.map(i=>GEAR[i].n).join('・')+' の上に重い物。ケースで守ろう。',pt:-pen,kw:'ランタンケース 収納 ハードケース'}); }
+  // ④ 濡れ物が寝袋(soft)に隣接
+  let wetBad=false; for(const id in placed){ if(!GEAR[id].attr.includes('wet'))continue;
+    cellsAbove(id).forEach(([x,y])=>{ [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<W&&ny<H){ const o=grid[ny][nx]; if(o&&GEAR[o].attr.includes('soft')) wetBad=true; } }); }); }
+  if(wetBad){ score-=16; issues.push({ic:'💧',tt:'寝袋が濡れる配置',td:'濡れ物(💧)が寝袋(🛏️)に接触。防水袋で仕切ろう。',pt:-16,kw:'防水 スタッフバッグ ドライバッグ'}); }
+  // ⑤ すぐ使う物が手前(上段)にない
+  let buried=[]; for(const id in placed){ if(!GEAR[id].attr.includes('soon'))continue;
+    const cells=cellsAbove(id); const minY=Math.min(...cells.map(c=>c[1])); if(minY>0) buried.push(id); }
+  if(buried.length){ const pen=buried.length*7; score-=pen;
+    issues.push({ic:'⏱',tt:'すぐ使う物が奥',td:buried.map(i=>GEAR[i].n).join('・')+' が埋まって取り出しにくい。上段(手前)へ。',pt:-pen,kw:'キャリーワゴン アウトドア 折りたたみ'}); }
+  // ⑥ 無駄な隙間（囲まれた空きセル）
+  let gaps=countEnclosedGaps();
+  if(gaps>=3){ const pen=Math.min(12,gaps*2); score-=pen;
+    issues.push({ic:'🕳️',tt:'デッドスペースが多い ('+gaps+'マス)',td:'囲まれた隙間が多い。積み方を詰めよう。',pt:-pen,kw:'収納ボックス スタッキング 隙間'}); }
+  score=Math.max(0,Math.min(100,score));
+  // good点（褒め）
+  if(!unplaced.length) issues.unshift({ic:'✅',tt:'全部つみ込んだ',td:'荷物は全部車内に収まった。えらい。',pt:0,good:true});
+  showResult(score,issues,unplaced.length===0);
+}
+function countEnclosedGaps(){ // 外(上端)と繋がっていない空きセル数
+  const seen=Array.from({length:H},()=>Array(W).fill(false)); const q=[];
+  for(let x=0;x<W;x++){ if(!grid[0][x]){ q.push([x,0]); seen[0][x]=true; } }
+  while(q.length){ const [x,y]=q.pop(); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<W&&ny<H&&!seen[ny][nx]&&!grid[ny][nx]){ seen[ny][nx]=true; q.push([nx,ny]); } }); }
+  let g=0; for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(!grid[y][x]&&!seen[y][x]) g++; return g;
+}
+
+/* ===== result ===== */
+function iqLabel(s){ if(s>=90)return['積載マイスター','#7bd88f']; if(s>=70)return['なかなかの手練れ','#a9d86a']; if(s>=50)return['まあまあ積載','#ffd166']; if(s>=30)return['助手席まで侵食','#ff9a4a']; return['積載やり直し','#ff6a6a']; }
+let lastScore=0;
+function showResult(score,issues,allIn){
+  lastScore=score; const [lab,col]=iqLabel(score);
+  const c=document.getElementById('result-card');
+  let h='<h2>🚗 積載けっか</h2><div class="iq" style="color:'+col+'">積載IQ '+score+'</div><div class="iqlabel" style="color:'+col+'">'+lab+'</div><div class="brk">';
+  issues.forEach(o=>{ h+='<div class="row"><span class="ic">'+o.ic+'</span><span class="tx"><span class="tt">'+o.tt+'</span><br><span class="td">'+o.td+'</span></span>'+
+    '<span class="pt '+(o.good?'good':'bad')+'">'+(o.pt<0?o.pt:'±0')+'</span>'+(o.kw?'<a href="'+rakuten(o.kw)+'" target="_blank" rel="nofollow sponsored noopener">楽天</a>':'')+'</div>'; });
+  h+='</div><div class="pr-note">※ 弱点に合わせた楽天検索に飛びます（アフィリンクを含む場合あり）</div>';
+  h+='<div class="row2"><button class="big x" id="r-share">𝕏 で積載IQをシェア</button></div><button class="big sub" id="r-retry">もう一回 積み直す</button>';
+  document.getElementById('result').style.display='flex'; c.innerHTML=h;
+  document.getElementById('r-retry').onclick=()=>{ document.getElementById('result').style.display='none'; setup(COND); };
+  document.getElementById('r-share').onclick=()=>{ const t='車載テトリス地獄【'+COND.label+'】\n私の積載IQは '+score+'（'+lab+'）でした🚗\n#車載テトリス地獄 #きぼうキャンプラボ';
+    window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(t)+'&url='+encodeURIComponent(SITE.url),'_blank','noopener'); };
+}
+document.getElementById('judge').onclick=judge;
+
+/* ===== boot ===== */
+setup(todayCond());
+</script>
+</body>
+</html>
