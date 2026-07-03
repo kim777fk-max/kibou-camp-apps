@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>焚き火みくじ 🔥 | きぼうキャンプラボ</title>
+<meta name="description" content="1日1回、焚き火に薪をくべると今日のキャンプ運が出る。日替わりラッキーギア＆連続記録つき。">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Maru+Gothic:wght@500;700&display=swap');
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#0a0d14;color:#f3ede1;
+    font-family:'Zen Maru Gothic','Hiragino Maru Gothic ProN',system-ui,sans-serif;}
+  body{min-height:100vh;background:radial-gradient(700px 380px at 50% 82%,rgba(240,120,40,.16),transparent 60%),
+    linear-gradient(180deg,#0a0d14 0%,#12100e 70%,#1a1410 100%);}
+  #app{max-width:440px;margin:0 auto;padding:14px 14px 30px;text-align:center;}
+  header .badge{display:inline-block;font-size:12px;letter-spacing:.1em;color:#ffb066;border:1px solid #3a2e25;border-radius:999px;padding:4px 13px;}
+  h1{font-family:'DotGothic16',monospace;font-size:clamp(26px,7vw,34px);margin:12px 0 2px;
+    background:linear-gradient(120deg,#ffd9a8,#f0833a,#ef5423);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:#a99b8c;font-size:13px;margin:0 0 6px;}
+  .streak{font-size:13px;color:#ffca7a;margin-bottom:6px;min-height:18px;}
+  .streak b{color:#ff8a3a}
+  .fire-wrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto;}
+  canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .fire-tap{position:absolute;left:0;right:0;bottom:8%;text-align:center;color:#ffe;font-size:13px;
+    text-shadow:0 1px 5px #000;z-index:3;animation:bl 1.3s steps(2) infinite;}
+  @keyframes bl{50%{opacity:.4}}
+  .btn{font-family:inherit;font-weight:700;border:none;border-radius:14px;padding:15px 20px;font-size:17px;cursor:pointer;
+    color:#2a1608;background:linear-gradient(120deg,#ffd08a,#f0833a,#ef5423);box-shadow:0 6px 20px rgba(239,84,35,.4);
+    width:100%;max-width:320px;margin:4px auto 0;display:block;transition:.15s;}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:#20180f;color:#e9dcc9;border:1px solid #4a3a28;box-shadow:none;font-weight:500;font-size:14px;}
+  .btn.x{background:#111;color:#fff;border:1px solid #333;box-shadow:none}
+  .btnrow{display:flex;gap:8px;max-width:320px;margin:8px auto 0}
+  .btnrow .btn{margin:0}
+
+  /* result */
+  #result{display:none;margin-top:4px;animation:rise .5s cubic-bezier(.2,.7,.3,1);}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .rank{font-family:'DotGothic16',monospace;font-size:clamp(40px,13vw,64px);line-height:1.1;margin:2px 0;font-weight:400;}
+  .rank .emo{font-size:.7em;margin-right:.15em}
+  .tagline{font-size:14px;font-weight:700;margin-bottom:8px;}
+  .card{background:#1c160f;border:1px solid #3a2e22;border-radius:16px;padding:16px 16px;text-align:left;}
+  .card .msg{font-size:14.5px;line-height:1.8;color:#efe4d3;}
+  .card .adv{margin-top:10px;font-size:13px;color:#ffca7a;border-top:1px dashed #3a2e22;padding-top:9px;}
+  .gear{margin-top:12px;display:flex;align-items:center;gap:12px;background:#241a10;border:1px solid #4a3722;border-radius:14px;padding:12px 14px;text-decoration:none;color:#f3ede1;}
+  .gear:active{background:#2c2013}
+  .gear .gi{font-size:28px;flex-shrink:0}
+  .gear .gc{display:flex;flex-direction:column;min-width:0;flex:1}
+  .gear .gk{font-size:11px;color:#ffb066;font-weight:700}
+  .gear .gn{font-size:15px;font-weight:700;margin:1px 0}
+  .gear .gw{font-size:12px;color:#a99b8c;line-height:1.5}
+  .gear .go{margin-left:auto;font-size:11px;background:#ef5423;color:#fff;border-radius:8px;padding:5px 9px;font-weight:700;white-space:nowrap;flex-shrink:0}
+  .pr-note{font-size:10.5px;color:#7a6e5e;margin:6px 2px 0;text-align:center}
+  .again{font-size:12px;color:#8a7d6e;margin-top:12px}
+  footer{text-align:center;color:#5e5344;font-size:11px;margin-top:22px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="badge">🏕️ きぼうキャンプラボ</span>
+    <h1>焚き火みくじ</h1>
+    <div class="sub">1日1回、薪をくべて今日のキャンプ運</div>
+    <div class="streak" id="streak"></div>
+  </header>
+
+  <div class="fire-wrap">
+    <canvas id="fire" width="440" height="440"></canvas>
+    <div class="fire-tap" id="firetap">🔥 薪をくべて占う</div>
+  </div>
+
+  <button class="btn" id="draw">薪をくべる</button>
+
+  <div id="result">
+    <div class="rank" id="r-rank"></div>
+    <div class="tagline" id="r-tag"></div>
+    <div class="card">
+      <div class="msg" id="r-msg"></div>
+      <div class="adv" id="r-adv"></div>
+      <a class="gear" id="r-gear" target="_blank" rel="nofollow sponsored noopener">
+        <span class="gi">🎁</span>
+        <span class="gc"><span class="gk">きょうの ラッキーギア</span><span class="gn" id="g-name"></span><span class="gw" id="g-why"></span></span>
+        <span class="go">楽天で見る</span>
+      </a>
+      <div class="pr-note">※ 楽天市場の検索結果に飛びます（アフィリエイトリンクを含む場合があります）</div>
+    </div>
+    <div class="btnrow">
+      <button class="btn x" id="shareX">𝕏 でシェア</button>
+      <button class="btn ghost" id="saveImg">📷 保存</button>
+    </div>
+    <div class="again" id="again"></div>
+  </div>
+
+  <footer>🔥 きぼうキャンプラボ ／ 焚き火みくじ<br>明日また、薪をくべにおいで。</footer>
+</div>
+
+<script>
+const SITE={name:'きぼうキャンプラボ',url:'https://kim777fk-max.github.io/kibou-camp-apps/omikuji/'};
+const LS='takibi_mikuji_v1';
+
+/* ===== 運勢データ ===== */
+const FORTUNES=[
+ {rank:'大大吉',w:3,emo:'🌟',color:'#ffe08a',tag:'焚き火の神、降臨。',
+  msg:['着火は一発、薪はカラッカラ、風はそよ風。今日は何をやってもうまくいく、伝説のキャンプ日和だ。','空も地面も味方につけた最高の日。ためらってた遠征も、ポチり迷ってたギアも、いっちゃえ。','火の粉が星に届きそうな夜。あなたの周りだけ、時間がゆっくり優しく流れる。'],
+  adv:['迷ったら「やる」。今日は大きく張っていい。','写真を撮っておこう。あとで宝物になる一日。']},
+ {rank:'大吉',w:11,emo:'🔥',color:'#ffc44d',tag:'最高の焚き火日和。',
+  msg:['ソロでもファミリーでも、火を囲めば全部うまくいく。新しいギアを迎える運も上々。','設営スイスイ、飯はうまい、夜は静か。文句なしの上機嫌デー。','薪の爆ぜる音まで心地いい。今日はとことん「ととのう」。'],
+  adv:['気になってたあのギア、今日が買い時かも。','コーヒーを一杯、ゆっくり淹れて。']},
+ {rank:'中吉',w:18,emo:'⛺',color:'#f0a24d',tag:'いい感じの一日。',
+  msg:['設営もスムーズ、夜は星も見える。ちょっとの工夫で、いつものキャンプがぐっと良くなる。','大きな山は無いけど、小さな「いいこと」が積み重なる日。','焚き火を眺める時間が、今日はいつもより沁みる。'],
+  adv:['ひと手間の下ごしらえが吉と出る。','近くの人に一声かけると、良い縁が。']},
+ {rank:'小吉',w:22,emo:'🍵',color:'#e6b36a',tag:'穏やかな運気。',
+  msg:['派手さは無いけど、コーヒーが沁みる、そんな日。焦らずゆっくりいこう。','のんびりが正解の一日。何もしない贅沢を、思う存分どうぞ。','火を小さく保って、静かに過ごすと運気が安定する。'],
+  adv:['予定を詰めすぎない。余白が吉。','温かい飲み物を切らさずに。']},
+ {rank:'吉',w:20,emo:'🌲',color:'#9fc47a',tag:'まずまず、堅実に。',
+  msg:['小さな段取りが吉と出る。忘れ物チェックだけ、しっかりね。','大きな失敗はしない日。地味だけど、着実に前へ。','基本に忠実にいけば、しっかり満たされる一日。'],
+  adv:['出発前に持ち物を指差し確認。','無理せず、余裕を持った行程で。']},
+ {rank:'末吉',w:16,emo:'🌙',color:'#8fa0b8',tag:'これから上向く運気。',
+  msg:['じわじわ良くなる前ぶれ。今日は準備の日。薪を割って、明日に備えよう。','焦りは禁物。仕込んだ分だけ、あとで返ってくる。','静かな夜。次のキャンプの計画を練るのに向いてる。'],
+  adv:['ギアの手入れをすると運気アップ。','次の遠征先を、そっと調べてみよう。']},
+ {rank:'凶',w:10,emo:'🌧️',color:'#7f8aa0',tag:'まさかの空模様…でも。',
+  msg:['雨が来るかも。でも大丈夫、雨キャンプもまた乙なもの。タープの下でのんびり過ごす日にしよう。','思い通りにいかない日。でも、うまくいかない夜ほど、あとで笑い話になる。','焚き火がなかなかつかない、そんな日。無理せず、撤収の判断も勇気だ。'],
+  adv:['タープと着替えは多めに。備えあれば憂いなし。','うまくいかない時は、潔く温泉へ逃げるのも手。']}
+];
+const totalW=FORTUNES.reduce((a,f)=>a+f.w,0);
+
+const GEAR=[
+ {n:'二次燃焼の焚き火台',kw:'焚き火台 二次燃焼',why:'今日の主役。炎をきれいに育てる相棒に。',emo:'🔥'},
+ {n:'ガスランタン',kw:'ガスランタン キャンプ',why:'夜のサイトを映画にする、暖色の一灯。',emo:'🏮'},
+ {n:'ローチェア',kw:'ローチェア キャンプ 焚き火',why:'焚き火と目線が合う、罪深い特等席。',emo:'🪑'},
+ {n:'ダウンシュラフ',kw:'ダウン シュラフ 3シーズン',why:'今夜はぐっすり眠れる、が吉。',emo:'🛏️'},
+ {n:'メスティン',kw:'メスティン 飯盒',why:'自動炊飯で、ほくほくご飯を。',emo:'🍚'},
+ {n:'鋳鉄ダッチオーブン',kw:'ダッチオーブン 鋳鉄',why:'ほったらかしで絶品、が今日の運。',emo:'🍲'},
+ {n:'ハードクーラーボックス',kw:'ハードクーラーボックス 保冷',why:'冷えた一本が、あなたを待っている。',emo:'🧊'},
+ {n:'TCタープ',kw:'TC タープ ポリコットン',why:'陽射しも小雨も、一枚で味方に。',emo:'⛺'},
+ {n:'焚き火グローブ',kw:'焚き火 グローブ 耐熱',why:'熱いのを掴めると、火遊びが捗る。',emo:'🧤'},
+ {n:'ブッシュクラフトナイフ',kw:'アウトドアナイフ ブッシュクラフト',why:'フェザースティックで着火名人に。',emo:'🔪'},
+ {n:'ホットサンドメーカー',kw:'ホットサンドメーカー 直火',why:'朝のごちそう運、急上昇中。',emo:'🥪'},
+ {n:'ポータブル電源',kw:'ポータブル電源 キャンプ',why:'快適さは正義。電源があれば無双。',emo:'🔋'},
+ {n:'キャンプコット',kw:'キャンプ コット 2way',why:'地面の底冷えと、今日でお別れ。',emo:'🛌'},
+ {n:'アウトドアケトル',kw:'アウトドア ケトル 直火',why:'湯気の立つ一杯が、運を呼ぶ。',emo:'🫖'}
+];
+const MILESTONES=[{d:30,t:'火の神'},{d:14,t:'谷の常連'},{d:7,t:'炎を操る者'},{d:3,t:'焚き火係'}];
+function titleFor(streak){ const m=MILESTONES.find(x=>streak>=x.d); return m?m.t:null; }
+function rakuten(kw){ return 'https://search.rakuten.co.jp/search/mall/'+encodeURIComponent(kw)+'/'; }
+
+/* ===== state ===== */
+let store=load(); let todayStr=dstr(new Date()); let state='ready'; let flare=0; let blueFire=false;
+function load(){ try{ return JSON.parse(localStorage.getItem(LS))||{last:'',streak:0,best:0,today:null}; }catch(e){ return {last:'',streak:0,best:0,today:null}; } }
+function save(){ try{ localStorage.setItem(LS,JSON.stringify(store)); }catch(e){} }
+function dstr(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function yStr(){ const y=new Date(); y.setDate(y.getDate()-1); return dstr(y); }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+function rollFortune(){ let r=Math.random()*totalW; for(let i=0;i<FORTUNES.length;i++){ r-=FORTUNES[i].w; if(r<0) return i; } return FORTUNES.length-1; }
+
+function doDraw(){
+  const fi=rollFortune(); const f=FORTUNES[fi];
+  const res={fi, msg:pick(f.msg), adv:pick(f.adv), gi:Math.floor(Math.random()*GEAR.length)};
+  // streak
+  if(store.last===yStr()) store.streak=(store.streak||0)+1;
+  else if(store.last===todayStr){} else store.streak=1;
+  store.best=Math.max(store.best||0,store.streak);
+  store.last=todayStr; store.today=res; save();
+  blueFire=store.streak>=7;
+  return res;
+}
+
+/* ===== FIRE animation ===== */
+const cv=document.getElementById('fire'), ctx=cv.getContext('2d'); const CW=440,CH=440;
+let logs=[], sparks=[], t=0;
+function initFire(){ logs=[{x:180,y:352,w:80,r:-.25},{x:230,y:356,w:76,r:.22},{x:205,y:346,w:64,r:.05}]; }
+function addSparks(n,burst){ for(let i=0;i<n;i++){ sparks.push({x:220+(Math.random()*80-40),y:330,vx:(Math.random()*2-1)*(burst?2.2:1),vy:-(2+Math.random()*(burst?5:3)),life:1,r:1+Math.random()*2}); } }
+function flame(x,baseY,h,w,t,ph,pal){
+  const fl=1+0.18*Math.sin(t*0.13+ph)+0.1*Math.sin(t*0.31+ph*2);
+  const hh=h*fl, tipx=x+Math.sin(t*0.09+ph)*w*0.28;
+  const g=ctx.createLinearGradient(x,baseY,tipx,baseY-hh);
+  g.addColorStop(0,pal[0]); g.addColorStop(.5,pal[1]); g.addColorStop(1,pal[2]);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x-w,baseY);
+  ctx.quadraticCurveTo(x-w*0.9,baseY-hh*0.5,tipx-w*0.15,baseY-hh);
+  ctx.quadraticCurveTo(x+w*0.9,baseY-hh*0.5,x+w,baseY); ctx.closePath(); ctx.fill();
+}
+function render(){
+  t++;
+  ctx.clearRect(0,0,CW,CH);
+  // night + stars
+  const sky=ctx.createLinearGradient(0,0,0,CH); sky.addColorStop(0,'#0b1020'); sky.addColorStop(.7,'#12100e'); sky.addColorStop(1,'#1a1208');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,CW,CH);
+  ctx.fillStyle='rgba(255,255,255,.5)'; for(let i=0;i<26;i++){ const sx=(i*79)%CW, sy=(i*47)%210; ctx.globalAlpha=.3+0.3*Math.sin(t*0.05+i); ctx.fillRect(sx,sy,2,2);} ctx.globalAlpha=1;
+  // ground
+  ctx.fillStyle='#181009'; ctx.beginPath(); ctx.ellipse(220,378,150,34,0,0,7); ctx.fill();
+  // glow
+  const inten=1+flare*1.1;
+  const gl=ctx.createRadialGradient(220,320,10,220,320,150*inten);
+  const glc=blueFire?'rgba(90,160,255,':'rgba(255,150,50,'; gl.addColorStop(0,glc+(0.5*inten)+')'); gl.addColorStop(1,glc+'0)');
+  ctx.fillStyle=gl; ctx.fillRect(0,120,CW,300);
+  // logs
+  logs.forEach(l=>{ ctx.save(); ctx.translate(l.x,l.y); ctx.rotate(l.r); ctx.fillStyle='#4a3220'; ctx.fillRect(-l.w/2,-9,l.w,18);
+    ctx.fillStyle='#6b4a2b'; ctx.fillRect(-l.w/2,-9,l.w,6); ctx.fillStyle='#2a1c11'; ctx.beginPath(); ctx.ellipse(l.w/2,0,4,9,0,0,7); ctx.fill(); ctx.restore(); });
+  // ember bed
+  for(let i=0;i<7;i++){ const ex=190+i*10, ey=344+((i%2)*4); ctx.fillStyle=blueFire?'rgba(120,180,255,':'rgba(255,120,40,'; ctx.globalAlpha=.5+0.4*Math.sin(t*0.2+i); ctx.beginPath(); ctx.arc(ex,ey,3,0,7); ctx.fill(); } ctx.globalAlpha=1;
+  // flames
+  const pal = blueFire? ['#2f7de0','#7fc0ff','#dff0ff'] : ['#e0431a','#ff8a1e','#ffe27a'];
+  const base=344, hbase=(70+flare*130);
+  flame(220,base,hbase*1.0,46,t,0,pal);
+  flame(198,base,hbase*0.72,32,t,2.1,[pal[0],pal[1],'#fff2c0']);
+  flame(244,base,hbase*0.7,30,t,4.2,[pal[0],pal[1],'#fff2c0']);
+  flame(220,base,hbase*0.5,20,t,1.0,[pal[1],pal[2],'#ffffff']);
+  // sparks
+  if(t%3===0) addSparks(1,false);
+  sparks.forEach(s=>{ s.x+=s.vx; s.y+=s.vy; s.vy+=0.03; s.life-=0.015; });
+  sparks=sparks.filter(s=>s.life>0);
+  sparks.forEach(s=>{ ctx.globalAlpha=Math.max(0,s.life); ctx.fillStyle=blueFire?'#bfe0ff':'#ffcf6a'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill(); }); ctx.globalAlpha=1;
+  // flare decay
+  if(flare>0){ flare*=0.965; if(flare<0.02) flare=0; }
+  requestAnimationFrame(render);
+}
+
+/* ===== reveal ===== */
+function showResult(res,animate){
+  const f=FORTUNES[res.fi];
+  document.getElementById('r-rank').innerHTML='<span class="emo">'+f.emo+'</span>'+f.rank;
+  document.getElementById('r-rank').style.color=f.color;
+  document.getElementById('r-tag').textContent=f.tag; document.getElementById('r-tag').style.color=f.color;
+  document.getElementById('r-msg').textContent=res.msg;
+  document.getElementById('r-adv').textContent='🧭 '+res.adv;
+  const g=GEAR[res.gi];
+  document.getElementById('r-gear').href=rakuten(g.kw);
+  document.querySelector('#r-gear .gi').textContent=g.emo;
+  document.getElementById('g-name').textContent=g.n;
+  document.getElementById('g-why').textContent=g.why;
+  document.getElementById('again').textContent='今日はもう引いたよ。また明日、薪をくべにおいで🔥';
+  document.getElementById('draw').style.display='none';
+  document.getElementById('firetap').style.display='none';
+  document.getElementById('result').style.display='block';
+  updateStreak();
+  lastRes=res;
+}
+let lastRes=null;
+function updateStreak(){
+  const s=store.streak||0; const el=document.getElementById('streak');
+  if(s<=0){ el.textContent=''; return; }
+  const ti=titleFor(s); const next=[...MILESTONES].reverse().find(m=>m.d>s);
+  el.innerHTML='🔥 <b>'+s+'日</b>連続'+(ti?'　称号「'+ti+'」':'')+(next?'　（あと'+(next.d-s)+'日で「'+next.t+'」）':'');
+}
+
+/* ===== interactions ===== */
+function startDraw(){
+  if(state!=='ready') return;
+  state='drawing';
+  document.getElementById('draw').style.display='none';
+  document.getElementById('firetap').textContent='🔥 ゆらゆら…';
+  // drop a log + flare
+  logs.push({x:212,y:250,w:70,r:.1,drop:true});
+  const dl=logs[logs.length-1]; const land=setInterval(()=>{ dl.y+=14; if(dl.y>=350){ dl.y=350; clearInterval(land); flare=1.0; addSparks(30,true); } },16);
+  const res=doDraw();
+  setTimeout(()=>{ showResult(res,true); state='done'; }, 1400);
+}
+document.getElementById('draw').addEventListener('click',startDraw);
+document.getElementById('fire').addEventListener('click',()=>{ if(state==='ready') startDraw(); });
+
+document.getElementById('shareX').addEventListener('click',()=>{
+  if(!lastRes)return; const f=FORTUNES[lastRes.fi];
+  const txt='今日のキャンプ運は【'+f.rank+'】'+f.emo+' '+f.tag+' きょうのラッキーギアは「'+GEAR[lastRes.gi].n+'」\n#焚き火みくじ #きぼうキャンプラボ';
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(txt)+'&url='+encodeURIComponent(SITE.url),'_blank','noopener');
+});
+document.getElementById('saveImg').addEventListener('click',()=>{ if(lastRes) drawCard(); });
+
+/* ===== share card ===== */
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function drawCard(){
+  const f=FORTUNES[lastRes.fi], g=GEAR[lastRes.gi], W=1080,H=1080;
+  const c=document.createElement('canvas'); c.width=W;c.height=H; const x=c.getContext('2d');
+  const bg=x.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#0b1020'); bg.addColorStop(1,'#1a1208'); x.fillStyle=bg; x.fillRect(0,0,W,H);
+  const gl=x.createRadialGradient(W/2,760,20,W/2,760,520); gl.addColorStop(0,'rgba(255,150,50,.5)'); gl.addColorStop(1,'rgba(255,150,50,0)'); x.fillStyle=gl; x.fillRect(0,300,W,780);
+  x.strokeStyle=f.color; x.lineWidth=8; roundRect(x,30,30,W-60,H-60,44); x.stroke();
+  x.textAlign='center'; x.fillStyle='#ffce8a'; x.font='600 40px "Zen Maru Gothic",sans-serif'; x.fillText('🔥 焚き火みくじ',W/2,140);
+  x.font='120px serif'; x.fillText(f.emo,W/2,320);
+  x.fillStyle=f.color; x.font='700 150px "DotGothic16",monospace'; x.fillText(f.rank,W/2,470);
+  x.font='600 44px "Zen Maru Gothic",sans-serif'; x.fillText(f.tag,W/2,545);
+  x.fillStyle='#efe4d3'; x.font='400 38px "Zen Maru Gothic",sans-serif'; wrap(x,lastRes.msg,W/2,630,W-160,54);
+  x.fillStyle='rgba(0,0,0,.3)'; roundRect(x,120,860,W-240,120,24); x.fill();
+  x.fillStyle='#ffb066'; x.font='600 30px "Zen Maru Gothic",sans-serif'; x.textAlign='left'; x.fillText('🎁 きょうのラッキーギア',170,910);
+  x.fillStyle='#fff'; x.font='700 42px "Zen Maru Gothic",sans-serif'; x.fillText(g.n,170,962);
+  x.textAlign='center'; x.fillStyle='#c9b9a8'; x.font='600 34px "Zen Maru Gothic",sans-serif'; x.fillText('🏕️ きぼうキャンプラボ'+(store.streak>1?'　🔥'+store.streak+'日連続':''),W/2,1030);
+  const a=document.createElement('a'); a.download='takibi-mikuji-'+f.rank+'.png'; a.href=c.toDataURL('image/png'); a.click();
+}
+function wrap(c,text,x,y,maxW,lh){ let line='',lines=[]; for(const ch of text){ if(c.measureText(line+ch).width>maxW&&line){lines.push(line);line=ch;} else line+=ch; } lines.push(line); if(lines.length>3)lines=lines.slice(0,3); const sy=y; lines.forEach((ln,i)=>c.fillText(ln,x,sy+i*lh)); }
+
+/* ===== boot ===== */
+(function(){
+  const params=new URLSearchParams(location.search);
+  if(params.get('reset')==='1'){ try{localStorage.removeItem(LS);}catch(e){} store=load(); }
+  initFire(); render();
+  if(store.last===todayStr && store.today){ blueFire=(store.streak>=7); state='done'; showResult(store.today,false); }
+  else { updateStreak(); }
+})();
+</script>
+</body>
+</html>
